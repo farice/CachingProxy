@@ -1,0 +1,27 @@
+dramaccesstime: 200
+[0]L1type: 2
+[1]L1d_assoc: 1
+[2]L1d_bsize: 32
+[3]L1d_cap: 16384
+[4]L1d_WMa: 1
+[5]L1d_replace: 0
+[6]L1d_thit: 5
+[7]L1i_assoc: 1
+[8]L1i_bsize: 32
+[9]L1i_cap: 16384
+[10]L1i_WMa: 1
+[11]L1i_replace: 0
+[12]L1i_thit: 5
+[13]L2type: 1
+[14]L2d_assoc: 4
+[15]L2d_bsize: 64
+[16]L2d_cap: 262144
+[17]L2d_WMa: 1
+[18]L2d_replace: 1
+[19]L2d_thit: 10
+[20]L2i_assoc:
+[21]L2i_bsize:
+[22]L2i_cap:
+[23]L2i_WMa:
+[24]L2i_replace:
+[25]L2i_thit:
