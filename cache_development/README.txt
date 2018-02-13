@@ -1,7 +1,13 @@
 This contains an old caching simulator for ECE550
 
 This is just for reference, we may implement that cache in
-a different manner (probably, it needs different fields)
+a different manner (probably, it needs different fields and
+will have a replacement policy based on expiration times and 
+other Cache-Control Header attributes)
+
+References:
+https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/http-caching
 
 
 -- HTTP Caching Proxy Implementation (Cache) --
