@@ -10,6 +10,19 @@
 
 // Cache item class
 // The cache contains responses to HTTP GET requests (200 OK) 
+// Key:
+// - accesses a specific entry in the cache
+// - the key is the URI of the request
+
+// Value:
+// - data contained in a specific cache entry (accessed by key)
+// - this is the servers 200 OK repsonse to the GET request
+
+
+// Creating the key via client request:
+
+
+
 class SingleLine {
     //private:
 public:
