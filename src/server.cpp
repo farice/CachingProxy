@@ -15,7 +15,9 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 
-  AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+  auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+  auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "/var/log/erss/proxy.log");
+  AixLog::Log::init({sink_cout, sink_file});
 	LOG(INFO) << "Logger with one cout log sink\n";
 
   int status;
