@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  proxy:
+    entrypoint: /config/entrypoint.sh
+    build: .
+    command: bash -c "ls -a /src && ./server"
+    volumes:
+      - ./src:/src
+    ports:
+      - "4444:4444"
