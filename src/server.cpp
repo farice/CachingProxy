@@ -1,16 +1,21 @@
 #include "spdlog/spdlog.h"
 
-#include <iostream>
 #include <memory>
+#include <iostream>
 #include <cstring>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <cstdlib>
+
 
 using namespace std;
 namespace spd = spdlog;
+
 int main(int argc, char *argv[])
 {
+
   try {
     auto console = spd::stdout_logger_mt("console");
     console->info("I THINK I'M LOGGING.");
@@ -21,7 +26,7 @@ int main(int argc, char *argv[])
     std::cout << "Log init failed: " << ex.what() << std::endl;
     return 1;
   }
-
+  
   int status;
   int socket_fd;
   struct addrinfo host_info;
@@ -126,6 +131,22 @@ int main(int argc, char *argv[])
   recv(client_connection_fd, buffer, 9, 0);
 
   buffer[9] = 0;
+
+  FILE * f = fopen("client_req.txt","w");
+
+  int daemon_status = daemon(0,0);
+  if (f == NULL){
+    // won't be able to tell if this happened
+    exit(EXIT_FAILURE);
+  }
+
+  fprintf(f, "%s\n", buffer);
+
+  if (fclose(f) != 0){
+    // error won't be able to do anything
+  }
+
+
 
   cout << "Server received: " << buffer << endl;
 
