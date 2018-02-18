@@ -1,4 +1,4 @@
-#include "spdlog/spdlog.h"
+#include "logging/aixlog.hpp"
 
 #include <memory>
 #include <iostream>
@@ -11,22 +11,13 @@
 
 
 using namespace std;
-namespace spd = spdlog;
 
 int main(int argc, char *argv[])
 {
 
-  try {
-    auto console = spd::stdout_logger_mt("console");
-    console->info("I THINK I'M LOGGING.");
-  }
-  // Exceptions will only be thrown upon failed logger or sink construction (not during logging)
-  catch (const spd::spdlog_ex& ex)
-  {
-    std::cout << "Log init failed: " << ex.what() << std::endl;
-    return 1;
-  }
-  
+  AixLog::Log::init<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
+	LOG(INFO) << "Logger with one cout log sink\n";
+
   int status;
   int socket_fd;
   struct addrinfo host_info;
