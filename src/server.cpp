@@ -46,8 +46,8 @@ int main(int argc, char *argv[])
 
   // check if the call succeeded
   if (status != 0) {
-    cerr << "Error: cannot get address info for host" << endl;
-    cerr << "  (" << hostname << "," << port << ")" << endl;
+    LOG(ERROR) << "Error: cannot get address info for host\n";
+    LOG(ERROR) << "  (" << hostname << "," << port << ")\n";
     return -1;
   } //if
 
@@ -58,8 +58,8 @@ int main(int argc, char *argv[])
 		     host_info_list->ai_protocol);
   // check socket call for error
   if (socket_fd == -1) {
-    cerr << "Error: cannot create socket" << endl;
-    cerr << "  (" << hostname << "," << port << ")" << endl;
+    LOG(ERROR) << "Error: cannot create socket\n";
+    LOG(ERROR) << "  (" << hostname << "," << port << ")\n";
     return -1;
   } //if
 
@@ -79,8 +79,8 @@ int main(int argc, char *argv[])
 
   // check the bind call
   if (status == -1) {
-    cerr << "Error: cannot bind socket" << endl;
-    cerr << "  (" << hostname << "," << port << ")" << endl;
+    LOG(ERROR) << "Error: cannot bind socket\n";
+    LOG(ERROR) << "  (" << hostname << "," << port << ")\n";
     return -1;
   } //if
 
@@ -88,12 +88,12 @@ int main(int argc, char *argv[])
   // that can be used to accept an incoming connection
   status = listen(socket_fd, 100);
   if (status == -1) {
-    cerr << "Error: cannot listen on socket" << endl;
-    cerr << "  (" << hostname << "," << port << ")" << endl;
+    LOG(ERROR) << "Error: cannot listen on socket\n";
+    LOG(ERROR) << "  (" << hostname << "," << port << ")\n";
     return -1;
   } //if
 
-  cout << "Waiting for connection on port " << port << endl;
+  LOG(INFO) << "Waiting for connection on port " << port << endl;
 
   // these are used to store the socket address and get its length
   // for the accpt() call
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
   // returns the file descriptor referring to that socket (not in listening state yet)
 
   if (client_connection_fd == -1) {
-    cerr << "Error: cannot accept connection on socket" << endl;
+    LOG(ERROR) << "Error: cannot accept connection on socket" << endl;
     return -1;
   } //if
 
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 
 
 
-  cout << "Server received: " << buffer << endl;
+  LOG(INFO) << "Server received: " << buffer << endl;
 
   // free the dynamically allocated linked list of addrinfo structs returned by getaddrinfo
   freeaddrinfo(host_info_list);
