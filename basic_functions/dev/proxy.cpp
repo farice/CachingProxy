@@ -5,9 +5,23 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <cstdlib>
+#include <sstream>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 using namespace std;
+
+void print_address_sock(const struct sockaddr * address){
+  struct sockaddr_in * _address_ = (struct sockaddr_in *) address;
+  char * ip = inet_ntoa(_address_->sin_addr);
+  cout << "Address = '%s'\n" <<  ip << endl;
+}
+
+
+// Client may send multiple GET requests even from simply clicking a webpage
+// How to handle? You'll have to spawn off threads to do each 
+
 
 int main(int argc, char *argv[])
 {
@@ -127,6 +141,58 @@ int main(int argc, char *argv[])
 
   cout << "Server received: " << buffer << endl;
 
+  stringstream req;
+
+  req << buffer;
+
+  string line;
+  getline(req, line);
+  cout << "The first line is " << line << endl;
+
+  getline(req,line);
+  cout << "The second line is " << line << endl;
+
+  string target_name = line.substr(line.find(" ") + 1);
+  cout << "The target host name is (" << target_name << ")" << endl;
+  
+  struct addrinfo target_info;
+  struct addrinfo *target_info_list;
+
+  memset(&target_info, 0, sizeof(target_info));
+  target_info.ai_family   = AF_UNSPEC;
+  target_info.ai_socktype = SOCK_STREAM;
+
+  const char * port_num = "8080"; // 80 or 8080?
+  /*
+  // replace with the address of the server the client requested
+  // you'll have to do some parsing of the GET request 
+  status = getaddrinfo(target_name, port_num, &target_info, &target_info_list);
+  
+  if (status != 0) {
+    perror("getaddrinfo()");
+    exit(EXIT_FAILURE);
+  }
+
+  socket_fd = socket(host_info_list->ai_family, 
+		     host_info_list->ai_socktype, 
+		     host_info_list->ai_protocol);
+ 
+  if (socket_fd == -1) {
+    perror("socket()");
+    exit(EXIT_FAILURE);
+  }
+  
+  //printf("Connecting to ringmaster %s on port %s\n",ringmaster_name, port_num);
+  
+  status = connect(socket_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
+  if (status == -1) {
+    perror("connect()");
+    exit(EXIT_FAILURE);
+  }
+
+  */
+
+  
   // free the dynamically allocated linked list of addrinfo structs returned by getaddrinfo
   freeaddrinfo(host_info_list);
 
