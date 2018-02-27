@@ -8,7 +8,9 @@
 #include <stdio.h>
 #include <cstdlib>
 
+#include <Poco/Net/SSLManager.h>
 #include <Poco/Net/HTTPClientSession.h>
+#include <Poco/Net/AcceptCertificateHandler.h>
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/StreamCopier.h>
 #include <Poco/URI.h>
@@ -34,7 +36,7 @@ public:
     // send request
     LOG(INFO) << "Creating secure session" << endl;
     HTTPSClientSession session(uri.getHost(), uri.getPort());
-    HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+    HTTPRequest proxy_req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
     session.sendRequest(proxy_req);
 
     // get response
@@ -77,6 +79,11 @@ public:
     if (path.empty()) path = "/";
 
     if (secure) {
+      Poco::Net::initializeSSL();
+      Poco::SharedPtr<InvalidCertificateHandler> ptrHandler = new AcceptCertificateHandler(false);
+      const Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", "", Context::VERIFY_NONE, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+      SSLManager::instance().initializeClient(0, ptrHandler, ptrContext);
+
       sendSecureRequest(req, path, out, uri);
     } else {
       sendPlainRequest(req, path, out, uri);
