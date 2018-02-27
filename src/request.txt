@@ -1,7 +1,0 @@
-CONNECT www.google.com:443 HTTP/1.1
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0
-Proxy-Connection: keep-alive
-Connection: keep-alive
-Host: www.google.com:443
-
-
