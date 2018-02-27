@@ -1,9 +1,9 @@
-version: '3'
+version: '2'
 
 services:
   proxy:
     build: .
-    command: bash -c "ls -a && ./proxy_server"
+    command: bash -c "ls -a && g++ -o proxy_server proxy_server.cpp -lPocoNet -lPocoUtil -lPocoFoundation -std=c++11 && ./proxy_server"
     volumes:
       - ./src:/src
     ports:
