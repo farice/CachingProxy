@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <cstdlib>
 
+#include<Poco/Net/HTTPServerConnectionFactory.h>
+#include<Poco/Net/HTTPServerConnection.h>
 #include <Poco/Net/SSLManager.h>
 #include <Poco/Net/SSLException.h>
 #include <Poco/Net/HTTPClientSession.h>
@@ -39,32 +41,6 @@ public:
       << "Host=" << req.getHost() << endl;
 
   }
-
-  /* AFTER THE INITIAL CONNECT FUTURE CONNECTION TAKE PLACE VIA TCP. Hence, this is defunct.
-
-  void sendSecureRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
-    // send request
-    LOG(INFO) << "Creating secure session to " << uri.getHost() << endl;
-
-    Poco::Net::initializeSSL();
-    Poco::SharedPtr<InvalidCertificateHandler> ptrHandler = new AcceptCertificateHandler(false);
-    Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", "", Context::VERIFY_NONE, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-    SSLManager::instance().initializeClient(0, ptrHandler, ptrContext);
-
-    HTTPSClientSession session(uri.getHost(), uri.getPort(), ptrContext);
-    HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
-    session.sendRequest(proxy_req);
-
-    // get response
-    HTTPResponse res;
-    LOG(INFO) << res.getStatus() << " - " << res.getReason() << endl;
-    // create istream for session response
-    istream &is = session.receiveResponse(res);
-
-    // Copy HTTP stream to app server response stream
-    Poco::StreamCopier::copyStream(is, out);
-
-  } */
 
   void sendPlainRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
     // send request
@@ -115,7 +91,6 @@ public:
 
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
   {
-    LOG(INFO) << "Handle request" << endl;
 
     resp.setStatus(HTTPResponse::HTTP_OK);
 
@@ -146,8 +121,39 @@ class MyRequestHandlerFactory : public HTTPRequestHandlerFactory
 public:
   virtual HTTPRequestHandler* createRequestHandler(const HTTPServerRequest &)
   {
+    LOG(INFO) << "Handle request" << endl;
     return new MyRequestHandler;
   }
+
+};
+
+class tcpHandlerFactory: public TCPServerConnectionFactory
+	/// This implementation of a TCPServerConnectionFactory
+	/// is used by HTTPServer to create HTTPServerConnection objects.
+{
+public:
+	tcpHandlerFactory(HTTPServerParams::Ptr pParams, HTTPRequestHandlerFactory::Ptr pFactory) :
+	_pParams(pParams),
+	_pFactory(pFactory) {
+
+  };
+		/// Creates the HTTPServerConnectionFactory.
+
+	~tcpHandlerFactory() {
+
+  };
+		/// Destroys the HTTPServerConnectionFactory.
+
+    virtual TCPServerConnection* createConnection(const StreamSocket& socket)
+  {
+  	return new HTTPServerConnection(socket, _pParams, _pFactory);
+  }
+		/// Creates an instance of HTTPServerConnection
+		/// using the given StreamSocket.
+
+private:
+	HTTPServerParams::Ptr          _pParams;
+	HTTPRequestHandlerFactory::Ptr _pFactory;
 };
 
 class MyServerApp : public ServerApplication
@@ -155,7 +161,8 @@ class MyServerApp : public ServerApplication
 protected:
   int main(const vector<string> &)
   {
-    HTTPServer s(new MyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
+    //HTTPServer s(new MyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
+    TCPServer s(new tcpHandlerFactory(new HTTPServerParams, new MyRequestHandlerFactory), ServerSocket(8080), new TCPServerParams);
 
     s.start();
     LOG(INFO) << endl << "Server started" << endl;
