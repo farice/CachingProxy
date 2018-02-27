@@ -3,9 +3,9 @@ version: '3'
 services:
   proxy:
     build: .
-    command: bash -c "ls -a /src && bash "
+    command: bash -c "ls -a && ./proxy_server"
     volumes:
       - ./src:/src
     ports:
-      - "4444:4444"
+      - "8080:8080"
     tty: true
