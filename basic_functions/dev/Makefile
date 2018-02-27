@@ -1,12 +1,14 @@
-TARGETS=client server
+TARGETS=proxy client server
 
 all: $(TARGETS)
 clean:
 	rm -f $(TARGETS) *~
 
 client: client.cpp
-	g++ -g -o $@ $<
+	g++ -Wall -g -o $@ $<
 
 server: server.cpp
-	g++ -g -o $@ $<
+	g++ -Wall -g -o $@ $<
 
+proxy: proxy.cpp
+	g++ -Wall -g -o $@ $<
