@@ -35,14 +35,6 @@ public:
 
     ostream& out = resp.send();
 
-    /*
-    out << "<h1>Hello world!</h1>"
-        << "<p>Count: "  << ++count         << "</p>"
-        << "<p>Host: "   << req.getHost()   << "</p>"
-        << "<p>Method: " << req.getMethod() << "</p>"
-        << "<p>URI: "    << req.getURI()    << "</p>";
-    out.flush();
-    */
 
     try
     {
@@ -60,10 +52,11 @@ public:
 
     // get response
     HTTPResponse res;
-    out << res.getStatus() << " - " << res.getReason() << endl;
-    // print response
+    LOG(INFO) << res.getStatus() << " - " << res.getReason() << endl;
+    // create istream for session response
     istream &is = session.receiveResponse(res);
-    //Poco::StreamCopier::copyStream(is, out);
+
+    // Copy HTTP stream to app server response stream
     Poco::StreamCopier::copyStream(is, out);
 
     LOG(INFO) << "Requesting url=" << uri.getHost() << endl
@@ -75,12 +68,6 @@ public:
     {
     LOG(ERROR) << ex.displayText() << endl;
     }
-
-    /*
-    LOG(INFO) << endl
-         << "Response sent for count=" << count
-         << " and URI=" << req.getURI() << endl;
-    */
   }
 
 private:
