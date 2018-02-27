@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include <Poco/Net/HTTPClientSession.h>
+#include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/StreamCopier.h>
 #include <Poco/URI.h>
 #include <Poco/Net/ServerSocket.h>
@@ -28,25 +29,11 @@ using namespace std;
 class MyRequestHandler : public HTTPRequestHandler
 {
 public:
-  virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
-  {
-    resp.setStatus(HTTPResponse::HTTP_OK);
-    resp.setContentType("text/html");
 
-    ostream& out = resp.send();
-
-
-    try
-    {
-    // prepare session
-    Poco::URI uri(req.getURI());
-    HTTPClientSession session(uri.getHost(), uri.getPort());
-
-    // prepare path
-    string path(uri.getPathAndQuery());
-    if (path.empty()) path = "/";
-
+  void sendSecureRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
     // send request
+    LOG(INFO) << "Creating secure session" << endl;
+    HTTPSClientSession session(uri.getHost(), uri.getPort());
     HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
     session.sendRequest(proxy_req);
 
@@ -59,6 +46,42 @@ public:
     // Copy HTTP stream to app server response stream
     Poco::StreamCopier::copyStream(is, out);
 
+  }
+
+  void sendPlainRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
+    // send request
+    LOG(INFO) << "Creating session" << endl;
+    HTTPClientSession session(uri.getHost(), uri.getPort());
+    HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+    session.sendRequest(proxy_req);
+
+    // get response
+    HTTPResponse res;
+    LOG(INFO) << res.getStatus() << " - " << res.getReason() << endl;
+    // create istream for session response
+    istream &is = session.receiveResponse(res);
+
+    // Copy HTTP stream to app server response stream
+    Poco::StreamCopier::copyStream(is, out);
+
+  }
+
+  void handleRequest(HTTPServerRequest &req, ostream& out, bool secure) {
+    try
+    {
+    // prepare session
+    Poco::URI uri(req.getURI());
+
+    // prepare path
+    string path(uri.getPathAndQuery());
+    if (path.empty()) path = "/";
+
+    if (secure) {
+      sendSecureRequest(req, path, out, uri);
+    } else {
+      sendPlainRequest(req, path, out, uri);
+    }
+
     LOG(INFO) << "Requesting url=" << uri.getHost() << endl
       << "port=" << uri.getPort() << endl
       << "path=" << path << endl;
@@ -66,7 +89,25 @@ public:
     }
     catch (Poco::Exception &ex)
     {
-    LOG(ERROR) << ex.displayText() << endl;
+    LOG(ERROR) << "Failed to get response from url=" << req.getURI() << endl
+      << "method=" << req.getMethod() << endl
+      << ex.displayText() << endl;
+    }
+  }
+
+  virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
+  {
+    resp.setStatus(HTTPResponse::HTTP_OK);
+    resp.setContentType("text/html");
+
+    ostream& out = resp.send();
+
+    if (req.getMethod() == "CONNECT") {
+      LOG(INFO) << "Secure request" << endl;
+      handleRequest(req, out, true);
+    } else {
+      LOG(INFO) << "Plain request" << endl;
+      handleRequest(req, out, false);
     }
   }
 
