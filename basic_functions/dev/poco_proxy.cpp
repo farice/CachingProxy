@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
   // options for that socket, assuming 1 = set and 0 = don't set(disable)
   status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
-  status = bind(socket_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
+  status = ::bind(socket_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
   // bind call takes a socket file descripter, a sockaddr struct (which is returned as a member
   // of the addrinfo struct returned by getaddrinfo() call) and a socketlen_t for that
   // sockets address length
