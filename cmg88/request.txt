@@ -1,9 +1,11 @@
-GET http://man7.org/linux/man-pages/man2/bind.2.html HTTP/1.1
+GET http://man7.org/linux/man-pages/man2/socket.2.html HTTP/1.1
 Host: man7.org
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0) Gecko/20100101 Firefox/58.0
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
 Accept-Language: en-US,en;q=0.5
 Accept-Encoding: gzip, deflate
+Referer: https://www.google.com/
+Cookie: __utma=141474094.445392911.1519708439.1519708439.1519708439.1; __utmc=141474094; __utmz=141474094.1519708439.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); sc_is_visitor_unique=rx7422636.1519709541.627CEA952E0F4F46CB7B7AA4D5FA62A2.1.1.1.1.1.1.1.1.1
 Connection: keep-alive
 Upgrade-Insecure-Requests: 1
 

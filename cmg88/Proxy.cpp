@@ -83,7 +83,7 @@ int main(int argc, char *argv[]){
   struct addrinfo proxy_info;
   struct addrinfo *proxy_info_list;
   const char *proxyname = NULL;
-  const char *listen_port = "8080";
+  const char *listen_port = "8081";
 
   memset(&proxy_info, 0, sizeof(proxy_info)); // init
 
@@ -235,11 +235,8 @@ int main(int argc, char *argv[]){
 
   parser.remove_CR(parsed_addr);
   
-  cout << "The parsed address is (" << parsed_addr << ")" << endl;
+  cout << "The parsed address is (" << parsed_addr << ")" << endl; // CR should be gone 
   
-
-  int server_fd = p.makeServerSocket(parsed_addr.c_str(), parsed_port.c_str());
-  cout << "returned server fd = " << server_fd << endl;
   
   FILE * f = fopen("request.txt","w");
 
@@ -258,9 +255,33 @@ int main(int argc, char *argv[]){
   cout << request << endl;
   cout << "**********************************************" << endl;
   
-  /* Parse client request */
 
+  int server_fd = p.makeServerSocket(parsed_addr.c_str(), parsed_port.c_str());
+  cout << "returned server fd = " << server_fd << endl;
   
+  ssize_t sent = send(server_fd, message.data(), sizeof(char) * message.size(), 0);
+  if (sent == -1){
+    perror("send()");
+    exit(EXIT_FAILURE);
+  }
+  cout << "send value = " << sent << endl;
+
+  char recv_buff[65000]; // just high number for now 
+  memset(&recv_buff, 0, sizeof(recv_buff));
+  
+  ssize_t bytes = recv(server_fd, recv_buff, sizeof(recv_buff), 0);
+  if (bytes == -1){
+    perror("recv");
+  }
+  cout << "Number of bytes received = " << bytes << endl;
+  recv_buff[bytes] = '\0';
+  
+  cout << "Server replied with: " << endl;
+
+  cout << recv_buff << endl;
+  /* Parse client request */
+		       
+  /*
   stringstream req;
 
   req << request;
@@ -276,7 +297,8 @@ int main(int argc, char *argv[]){
   cout << "The target host name is " << target_name  << endl;
 
   cout << "Now attempting to connect on behalf of client" << endl;
-
+  */
+		       
   
   // free the dynamically allocated linked list of addrinfo structs returned by getaddrinfo
   freeaddrinfo(proxy_info_list);
