@@ -55,18 +55,20 @@ public:
     if (path.empty()) path = "/";
 
     // send request
-    HTTPRequest req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
-    session.sendRequest(req);
+    HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+    session.sendRequest(proxy_req);
 
     // get response
     HTTPResponse res;
     out << res.getStatus() << " - " << res.getReason() << endl;
-
     // print response
     istream &is = session.receiveResponse(res);
+    //Poco::StreamCopier::copyStream(is, out);
     Poco::StreamCopier::copyStream(is, out);
 
-    LOG(INFO) << "Requesting path=" << path << endl;
+    LOG(INFO) << "Requesting url=" << uri.getHost() << endl
+      << "port=" << uri.getPort() << endl
+      << "path=" << path << endl;
 
     }
     catch (Poco::Exception &ex)
@@ -74,9 +76,11 @@ public:
     LOG(ERROR) << ex.displayText() << endl;
     }
 
+    /*
     LOG(INFO) << endl
          << "Response sent for count=" << count
          << " and URI=" << req.getURI() << endl;
+    */
   }
 
 private:
@@ -118,7 +122,6 @@ int main(int argc, char *argv[])
   auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
   auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "/var/log/erss/proxy.log");
   AixLog::Log::init({sink_cout, sink_file});
-	LOG(INFO) << "Logger with one cout log sink\n";
 
   MyServerApp app;
   return app.run(argc, argv);
