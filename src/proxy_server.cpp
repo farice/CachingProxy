@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include <Poco/Net/SSLManager.h>
+#include <Poco/Net/SSLException.h>
 #include <Poco/Net/HTTPClientSession.h>
 #include <Poco/Net/AcceptCertificateHandler.h>
 #include <Poco/Net/HTTPSClientSession.h>
@@ -32,11 +33,26 @@ class MyRequestHandler : public HTTPRequestHandler
 {
 public:
 
+  void connect(HTTPServerRequest &req, HTTPServerResponse &resp, ostream& out) {
+    // CONNECT
+    LOG(INFO) << "HTTP CONNECT" << endl
+      << "Host=" << req.getHost() << endl;
+
+  }
+
+  /* AFTER THE INITIAL CONNECT FUTURE CONNECTION TAKE PLACE VIA TCP. Hence, this is defunct.
+
   void sendSecureRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
     // send request
-    LOG(INFO) << "Creating secure session" << endl;
-    HTTPSClientSession session(uri.getHost(), uri.getPort());
-    HTTPRequest proxy_req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
+    LOG(INFO) << "Creating secure session to " << uri.getHost() << endl;
+
+    Poco::Net::initializeSSL();
+    Poco::SharedPtr<InvalidCertificateHandler> ptrHandler = new AcceptCertificateHandler(false);
+    Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", "", Context::VERIFY_NONE, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+    SSLManager::instance().initializeClient(0, ptrHandler, ptrContext);
+
+    HTTPSClientSession session(uri.getHost(), uri.getPort(), ptrContext);
+    HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
     session.sendRequest(proxy_req);
 
     // get response
@@ -48,11 +64,11 @@ public:
     // Copy HTTP stream to app server response stream
     Poco::StreamCopier::copyStream(is, out);
 
-  }
+  } */
 
   void sendPlainRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
     // send request
-    LOG(INFO) << "Creating session" << endl;
+    LOG(INFO) << "Creating session to " << uri.getHost() << endl;
     HTTPClientSession session(uri.getHost(), uri.getPort());
     HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
     session.sendRequest(proxy_req);
@@ -68,7 +84,7 @@ public:
 
   }
 
-  void handleRequest(HTTPServerRequest &req, ostream& out, bool secure) {
+  void serveRequest(HTTPServerRequest &req, ostream& out) {
     try
     {
     // prepare session
@@ -78,44 +94,45 @@ public:
     string path(uri.getPathAndQuery());
     if (path.empty()) path = "/";
 
-    if (secure) {
-      Poco::Net::initializeSSL();
-      Poco::SharedPtr<InvalidCertificateHandler> ptrHandler = new AcceptCertificateHandler(false);
-      const Context::Ptr ptrContext = new Context(Context::CLIENT_USE, "", "", "", Context::VERIFY_NONE, 9, false, "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-      SSLManager::instance().initializeClient(0, ptrHandler, ptrContext);
-
-      sendSecureRequest(req, path, out, uri);
-    } else {
-      sendPlainRequest(req, path, out, uri);
-    }
+    sendPlainRequest(req, path, out, uri);
 
     LOG(INFO) << "Requesting url=" << uri.getHost() << endl
       << "port=" << uri.getPort() << endl
       << "path=" << path << endl;
 
     }
+    catch( const SSLException& e )
+    {
+        LOG(ERROR) << e.what() << ": " << e.message() << endl;
+    }
     catch (Poco::Exception &ex)
     {
     LOG(ERROR) << "Failed to get response from url=" << req.getURI() << endl
       << "method=" << req.getMethod() << endl
-      << ex.displayText() << endl;
+      << ex.what() << ": " << ex.message() << endl;
     }
   }
 
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
   {
+    LOG(INFO) << "Handle request" << endl;
+
     resp.setStatus(HTTPResponse::HTTP_OK);
-    resp.setContentType("text/html");
 
     ostream& out = resp.send();
 
     if (req.getMethod() == "CONNECT") {
-      LOG(INFO) << "Secure request" << endl;
-      handleRequest(req, out, true);
+      //resp.setContentType("NO_CONTENT_TYPE");
+      connect(req, resp, out);
+      // TODO
     } else {
+      resp.setContentType("text/html");
       LOG(INFO) << "Plain request" << endl;
-      handleRequest(req, out, false);
+      serveRequest(req, out);
     }
+
+    //out << resp.getStatus() << " - " << resp.getReason() << endl;
+    LOG(INFO) << resp.getStatus() << " - " << resp.getReason() << endl;
   }
 
 private:
