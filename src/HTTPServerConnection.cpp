@@ -11,9 +11,10 @@
 // SPDX-License-Identifier:	BSL-1.0
 //
 
+#include "logging/aixlog.hpp"
 
 #include "HTTPServerConnection.h"
-#include <Poco/Net/HTTPServerSession.h>
+#include "HTTPServerSession.h"
 #include <Poco/Net/HTTPServerRequestImpl.h>
 #include <Poco/Net/HTTPServerResponseImpl.h>
 #include <Poco/Net/HTTPRequestHandler.h>
@@ -60,7 +61,7 @@ void HTTPServerConnection::run()
 	HTTPServerSession session(socket(), _pParams);
 	while (!_stopped && session.hasMoreRequests())
 	{
-		std::cout << "MORE REQUESTS" << std::endl;
+		LOG(INFO) << "MORE REQUESTS" << std::endl;
 		try
 		{
 			Poco::FastMutex::ScopedLock lock(_mutex);
@@ -72,6 +73,7 @@ void HTTPServerConnection::run()
 				Poco::Timestamp now;
 				response.setDate(now);
 				response.setVersion(request.getVersion());
+
 				response.setKeepAlive(_pParams->getKeepAlive() && request.getKeepAlive() && session.canKeepAlive());
 				if (!server.empty())
 					response.set("Server", server);
@@ -84,12 +86,17 @@ void HTTPServerConnection::run()
 							response.sendContinue();
 
 						pHandler->handleRequest(request, response);
+
+						LOG(INFO) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
+						<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
 						session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
 					}
 					else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
 				}
 				catch (Poco::Exception&)
 				{
+					LOG(ERROR) << "EXCEPTION: requestHandling" << std::endl;
+
 					if (!response.sent())
 					{
 						try
@@ -100,24 +107,24 @@ void HTTPServerConnection::run()
 						{
 						}
 					}
-					std::cout << "EXCEPTION" << std::endl;
+
 					throw;
 				}
 			}
 		}
 		catch (NoMessageException&)
 		{
-			std::cout << "EXCEPTION" << std::endl;
+			LOG(ERROR) << "EXCEPTION: Parse Data w/ NoMessage" << std::endl;
 			break;
 		}
 		catch (MessageException&)
 		{
-			std::cout << "EXCEPTION" << std::endl;
+			LOG(ERROR) << "EXCEPTION: Parse Data w/ Message" << std::endl;
 			sendErrorResponse(session, HTTPResponse::HTTP_BAD_REQUEST);
 		}
 		catch (Poco::Exception&)
 		{
-			std::cout << "EXCEPTION" << std::endl;
+			LOG(ERROR) << "EXCEPTION: Parse Data" << std::endl;
 			if (session.networkException())
 			{
 				session.networkException()->rethrow();
@@ -130,6 +137,9 @@ void HTTPServerConnection::run()
 
 void HTTPServerConnection::sendErrorResponse(HTTPServerSession& session, HTTPResponse::HTTPStatus status)
 {
+	LOG(ERROR) << "Send error response="
+	<< status << std::endl;
+
 	HTTPServerResponseImpl response(session);
 	response.setVersion(HTTPMessage::HTTP_1_1);
 	response.setStatusAndReason(status);

@@ -92,12 +92,16 @@ public:
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
   {
 
+    LOG(INFO) << "Handle Request" << endl;
+
     resp.setStatus(HTTPResponse::HTTP_OK);
 
     ostream& out = resp.send();
 
     if (req.getMethod() == "CONNECT") {
       //resp.setContentType("NO_CONTENT_TYPE");
+      // Keep connection alive to transmit raw TCP
+      resp.setKeepAlive(true);
       connect(req, resp, out);
       // TODO
     } else {
@@ -136,6 +140,9 @@ public:
 	_pParams(pParams),
 	_pFactory(pFactory) {
 
+    poco_check_ptr (pFactory);
+    LOG(INFO) << "keepAlive=" << pParams->getKeepAlive();
+
   };
 		/// Creates the HTTPServerConnectionFactory.
 
@@ -163,7 +170,7 @@ protected:
   int main(const vector<string> &)
   {
     //HTTPServer s(new MyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
-    TCPServer s(new tcpHandlerFactory(new HTTPServerParams, new MyRequestHandlerFactory), ServerSocket(8080), new TCPServerParams);
+    TCPServer s(new tcpHandlerFactory(new HTTPServerParams, new MyRequestHandlerFactory), ServerSocket(8080), new HTTPServerParams);
 
     s.start();
     LOG(INFO) << endl << "Server started" << endl;
