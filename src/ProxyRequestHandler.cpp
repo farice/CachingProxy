@@ -32,25 +32,12 @@ using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace std;
 
-void ProxyRequestHandler::sendPlainRequest(HTTPServerRequest &req, std::string path, std::ostream& out, Poco::URI uri) {
-  // send request
-  LOG(INFO) << "Creating session to " << uri.getHost() << std::endl;
-  HTTPClientSession session(uri.getHost(), uri.getPort());
-  HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
-  session.sendRequest(proxy_req);
+void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
+{
 
-  // get response
-  HTTPResponse res;
-  LOG(INFO) << res.getStatus() << " - " << res.getReason() << std::endl;
-  // create istream for session response
-  istream &is = session.receiveResponse(res);
+  std::ostream& out = resp.send();
 
-  // Copy HTTP stream to app server response stream
-  Poco::StreamCopier::copyStream(is, out);
-
-}
-
-void ProxyRequestHandler::serveRequest(HTTPServerRequest &req, std::ostream& out) {
+  LOG(INFO) << "Plain request" << std::endl;
   try
   {
   // prepare session
@@ -60,37 +47,37 @@ void ProxyRequestHandler::serveRequest(HTTPServerRequest &req, std::ostream& out
   string path(uri.getPathAndQuery());
   if (path.empty()) path = "/";
 
-  sendPlainRequest(req, path, out, uri);
+  // send request
+  LOG(INFO) << "Creating session to " << uri.getHost() << std::endl;
+  HTTPClientSession session(uri.getHost(), uri.getPort());
+  HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+  //proxy_req.setContentType("application/x-www-form-urlencoded");
+  session.sendRequest(proxy_req);
+
+  // get response
+  HTTPResponse proxy_resp;
+  LOG(INFO) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
+  // create istream for session response
+  istream &is = session.receiveResponse(proxy_resp);
+
+  // Copy HTTP stream to app server response stream
+  Poco::StreamCopier::copyStream(is, out);
 
   LOG(INFO) << "Requesting url=" << uri.getHost() << std::endl
     << "port=" << uri.getPort() << endl
     << "path=" << path << endl;
 
-  }
-  catch( const SSLException& e )
-  {
-      LOG(ERROR) << e.what() << ": " << e.message() << std::endl;
+    resp.setStatus(proxy_resp.getStatus());
+    resp.setContentType(proxy_resp.getContentType());
   }
   catch (Poco::Exception &ex)
   {
   LOG(ERROR) << "Failed to get response from url=" << req.getURI() << std::endl
     << "method=" << req.getMethod() << std::endl
     << ex.what() << ": " << ex.message() << endl;
+
+    resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
   }
-}
-
-void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
-{
-
-  LOG(INFO) << "Handle Request" << std::endl;
-
-  resp.setStatus(HTTPResponse::HTTP_OK);
-
-  std::ostream& out = resp.send();
-
-  resp.setContentType("text/html");
-  LOG(INFO) << "Plain request" << std::endl;
-  serveRequest(req, out);
 
   //out << resp.getStatus() << " - " << resp.getReason() << endl;
   LOG(INFO) << resp.getStatus() << " - " << resp.getReason() << std::endl;

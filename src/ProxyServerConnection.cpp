@@ -55,44 +55,6 @@ ProxyServerConnection::~ProxyServerConnection()
 	}
 }
 
-/*
-void ProxyServerConnection::run() {
-	cout << "New connection from: " << socket().peerAddress().host().toString() <<  endl << flush;
-        bool isOpen = true;
-        Poco::Timespan timeOut(10,0);
-        unsigned char incomingBuffer[1000];
-        while(isOpen){
-            if (socket().poll(timeOut,Poco::Net::Socket::SELECT_READ) == false){
-                cout << "TIMEOUT!" << endl << flush;
-            }
-            else{
-                cout << "RX EVENT!!! ---> "   << flush;
-                int nBytes = -1;
-
-                try {
-                    nBytes = socket().receiveBytes(incomingBuffer, sizeof(incomingBuffer));
-                }
-                catch (Poco::Exception& exc) {
-                    //Handle your network errors.
-                    cerr << "Network error: " << exc.displayText() << endl;
-                    isOpen = false;
-                }
-
-
-                if (nBytes==0){
-                    cout << "Client closes connection!" << endl << flush;
-                    isOpen = false;
-                }
-                else{
-                    cout << "Receiving nBytes: " << nBytes << endl << flush;
-										cout << "Bytes" << incomingBuffer << endl << flush;
-                }
-            }
-        }
-        cout << "Connection finished!" << endl << flush;
-    }
-*/
-
 void ProxyServerConnection::run()
 {
 	std::string server = _pParams->getSoftwareVersion();
@@ -202,7 +164,7 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 	unsigned char destinationBuffer[10000];
 
 	bool isOpen = true;
-	// 10s timeout
+	// 1s timeout when polling
 	Poco::Timespan timeOut(1,0);
 
 	StreamSocket destinationServer = StreamSocket();
@@ -226,18 +188,14 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 
 	LOG(INFO) << "Handling request as HTTPS data" << std::endl;
 	while(isOpen){
-
-			LOG(INFO) << "Status: SELECT_READ" << endl  << flush;
 			int nClientBytes = -1;
 			int nDestinationBytes = -1;
 
 			try {
-				LOG(INFO) << "Session has more requests?" << endl  << flush;
 				if (session.socket().poll(timeOut, Socket::SELECT_READ) == true) {
 					LOG(INFO) << "Session has more requests!" << endl  << flush;
 					nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
 				}
-				LOG(INFO) << "Destination has more requests?" << endl  << flush;
 				if (destinationServer.poll(timeOut, Socket::SELECT_READ) == true) {
 					LOG(INFO) << "Destination server has more requests!" << endl  << flush;
 					nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
@@ -265,13 +223,11 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 					isOpen = false;
 			}
 
-			LOG(INFO) << "checking number of client bytes..." << endl;
 				if (nClientBytes==0 || nDestinationBytes == 0){
 						LOG(INFO) << "Client or destination closes connection!" << endl << flush;
 						isOpen = false;
 				}
 
-				LOG(INFO) << "endloop" << endl;
 //				else{
 
 //					}
