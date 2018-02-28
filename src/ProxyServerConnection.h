@@ -21,7 +21,7 @@
 #include <Poco/Net/Net.h>
 #include <Poco/Net/TCPServerConnection.h>
 #include <Poco/Net/HTTPResponse.h>
-#include <Poco/Net/HTTPRequestHandlerFactory.h>
+#include "ProxyRequestHandlerFactory.h"
 #include <Poco/Net/HTTPServerParams.h>
 #include <Poco/Mutex.h>
 
@@ -32,16 +32,16 @@ namespace Net {
 class HTTPServerSession;
 
 
-class Net_API HTTPServerConnection: public TCPServerConnection
+class Net_API ProxyServerConnection: public TCPServerConnection
 	/// This subclass of TCPServerConnection handles HTTP
 	/// connections.
 {
 public:
-	HTTPServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, HTTPRequestHandlerFactory::Ptr pFactory);
-		/// Creates the HTTPServerConnection.
+	ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory);
+		/// Creates the ProxyServerConnection.
 
-	virtual ~HTTPServerConnection();
-		/// Destroys the HTTPServerConnection.
+	virtual ~ProxyServerConnection();
+		/// Destroys the ProxyServerConnection.
 
 	void run();
 		/// Handles all HTTP requests coming in.
@@ -52,7 +52,7 @@ protected:
 
 private:
 	HTTPServerParams::Ptr          _pParams;
-	HTTPRequestHandlerFactory::Ptr _pFactory;
+	ProxyRequestHandlerFactory::Ptr _pFactory;
 	bool _stopped;
 	Poco::FastMutex _mutex;
 };
@@ -61,4 +61,4 @@ private:
 } } // namespace Poco::Net
 
 
-#endif // Net_HTTPServerConnection_INCLUDED
+#endif // Net_ProxyServerConnection_INCLUDED

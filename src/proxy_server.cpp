@@ -1,5 +1,5 @@
 #include "logging/aixlog.hpp"
-#include "HTTPServerConnection.h"
+#include "ProxyServerConnection.h"
 
 #include <iostream>
 #include <cstring>
@@ -19,8 +19,6 @@
 #include <Poco/URI.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/HTTPServer.h>
-#include <Poco/Net/HTTPRequestHandler.h>
-#include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
@@ -31,112 +29,12 @@ using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace std;
 
-class MyRequestHandler : public HTTPRequestHandler
-{
-public:
-
-  void connect(HTTPServerRequest &req, HTTPServerResponse &resp, ostream& out) {
-    // CONNECT
-    LOG(INFO) << "HTTP CONNECT" << endl
-      << "Host=" << req.getHost() << endl;
-
-  }
-
-  void sendPlainRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
-    // send request
-    LOG(INFO) << "Creating session to " << uri.getHost() << endl;
-    HTTPClientSession session(uri.getHost(), uri.getPort());
-    HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
-    session.sendRequest(proxy_req);
-
-    // get response
-    HTTPResponse res;
-    LOG(INFO) << res.getStatus() << " - " << res.getReason() << endl;
-    // create istream for session response
-    istream &is = session.receiveResponse(res);
-
-    // Copy HTTP stream to app server response stream
-    Poco::StreamCopier::copyStream(is, out);
-
-  }
-
-  void serveRequest(HTTPServerRequest &req, ostream& out) {
-    try
-    {
-    // prepare session
-    Poco::URI uri(req.getURI());
-
-    // prepare path
-    string path(uri.getPathAndQuery());
-    if (path.empty()) path = "/";
-
-    sendPlainRequest(req, path, out, uri);
-
-    LOG(INFO) << "Requesting url=" << uri.getHost() << endl
-      << "port=" << uri.getPort() << endl
-      << "path=" << path << endl;
-
-    }
-    catch( const SSLException& e )
-    {
-        LOG(ERROR) << e.what() << ": " << e.message() << endl;
-    }
-    catch (Poco::Exception &ex)
-    {
-    LOG(ERROR) << "Failed to get response from url=" << req.getURI() << endl
-      << "method=" << req.getMethod() << endl
-      << ex.what() << ": " << ex.message() << endl;
-    }
-  }
-
-  virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
-  {
-
-    LOG(INFO) << "Handle Request" << endl;
-
-    resp.setStatus(HTTPResponse::HTTP_OK);
-
-    ostream& out = resp.send();
-
-    if (req.getMethod() == "CONNECT") {
-      //resp.setContentType("NO_CONTENT_TYPE");
-      // Keep connection alive to transmit raw TCP
-      resp.setKeepAlive(true);
-      connect(req, resp, out);
-      // TODO
-    } else {
-      resp.setContentType("text/html");
-      LOG(INFO) << "Plain request" << endl;
-      serveRequest(req, out);
-    }
-
-    //out << resp.getStatus() << " - " << resp.getReason() << endl;
-    LOG(INFO) << resp.getStatus() << " - " << resp.getReason() << endl;
-  }
-
-private:
-  static int count;
-};
-
-int MyRequestHandler::count = 0;
-
-class MyRequestHandlerFactory : public HTTPRequestHandlerFactory
-{
-public:
-  virtual HTTPRequestHandler* createRequestHandler(const HTTPServerRequest &)
-  {
-    LOG(INFO) << "Create request handler" << endl;
-    return new MyRequestHandler;
-  }
-
-};
-
-class tcpHandlerFactory: public TCPServerConnectionFactory
+class ProxyHandlerFactory: public TCPServerConnectionFactory
 	/// This implementation of a TCPServerConnectionFactory
 	/// is used by HTTPServer to create HTTPServerConnection objects.
 {
 public:
-	tcpHandlerFactory(HTTPServerParams::Ptr pParams, HTTPRequestHandlerFactory::Ptr pFactory) :
+	ProxyHandlerFactory(HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory) :
 	_pParams(pParams),
 	_pFactory(pFactory) {
 
@@ -146,7 +44,7 @@ public:
   };
 		/// Creates the HTTPServerConnectionFactory.
 
-	~tcpHandlerFactory() {
+	~ProxyHandlerFactory() {
 
   };
 		/// Destroys the HTTPServerConnectionFactory.
@@ -154,23 +52,23 @@ public:
     virtual TCPServerConnection* createConnection(const StreamSocket& socket)
   {
     LOG(INFO) << "create connection" << endl;
-  	return new HTTPServerConnection(socket, _pParams, _pFactory);
+  	return new ProxyServerConnection(socket, _pParams, _pFactory);
   }
 		/// Creates an instance of HTTPServerConnection
 		/// using the given StreamSocket.
 
 private:
 	HTTPServerParams::Ptr          _pParams;
-	HTTPRequestHandlerFactory::Ptr _pFactory;
+	ProxyRequestHandlerFactory::Ptr _pFactory;
 };
 
-class MyServerApp : public ServerApplication
+class ProxyServerApp : public ServerApplication
 {
 protected:
   int main(const vector<string> &)
   {
-    //HTTPServer s(new MyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
-    TCPServer s(new tcpHandlerFactory(new HTTPServerParams, new MyRequestHandlerFactory), ServerSocket(8080), new HTTPServerParams);
+    //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
+    TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), ServerSocket(8080), new HTTPServerParams);
 
     s.start();
     LOG(INFO) << endl << "Server started" << endl;
@@ -186,10 +84,13 @@ protected:
 
 int main(int argc, char *argv[])
 {
+
+  // Initialize logging
   auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
   auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "/var/log/erss/proxy.log");
   AixLog::Log::init({sink_cout, sink_file});
 
-  MyServerApp app;
+  // run proxy app (Poco ServerApplication)
+  ProxyServerApp app;
   return app.run(argc, argv);
 }

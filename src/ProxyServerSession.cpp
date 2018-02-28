@@ -1,9 +1,9 @@
 //
-// HTTPServerSession.cpp
+// ProxyServerSession.cpp
 //
 // Library: Net
 // Package: HTTPServer
-// Module:  HTTPServerSession
+// Module:  ProxyServerSession
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
@@ -12,14 +12,14 @@
 //
 
 
-#include "HTTPServerSession.h"
+#include "ProxyServerSession.h"
 #include <iostream>
 
 namespace Poco {
 namespace Net {
 
 
-HTTPServerSession::HTTPServerSession(const StreamSocket& socket, HTTPServerParams::Ptr pParams):
+ProxyServerSession::ProxyServerSession(const StreamSocket& socket, HTTPServerParams::Ptr pParams):
 	HTTPSession(socket, pParams->getKeepAlive()),
 	_firstRequest(true),
 	_keepAliveTimeout(pParams->getKeepAliveTimeout()),
@@ -33,12 +33,12 @@ HTTPServerSession::HTTPServerSession(const StreamSocket& socket, HTTPServerParam
 }
 
 
-HTTPServerSession::~HTTPServerSession()
+ProxyServerSession::~ProxyServerSession()
 {
 }
 
 
-bool HTTPServerSession::hasMoreRequests()
+bool ProxyServerSession::hasMoreRequests()
 {
 	std::cout << "POLL SOCKET" << std::endl;
 
@@ -68,13 +68,13 @@ bool HTTPServerSession::hasMoreRequests()
 }
 
 
-SocketAddress HTTPServerSession::clientAddress()
+SocketAddress ProxyServerSession::clientAddress()
 {
 	return socket().peerAddress();
 }
 
 
-SocketAddress HTTPServerSession::serverAddress()
+SocketAddress ProxyServerSession::serverAddress()
 {
 	return socket().address();
 }

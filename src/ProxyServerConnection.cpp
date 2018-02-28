@@ -1,9 +1,9 @@
 //
-// HTTPServerConnection.cpp
+// ProxyServerConnection.cpp
 //
 // Library: Net
 // Package: HTTPServer
-// Module:  HTTPServerConnection
+// Module:  ProxyServerConnection
 //
 // Copyright (c) 2005-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
@@ -13,12 +13,13 @@
 
 #include "logging/aixlog.hpp"
 
-#include "HTTPServerConnection.h"
-#include "HTTPServerSession.h"
+#include "ProxyServerConnection.h"
+#include <Poco/Net/HTTPServerSession.h>
 #include <Poco/Net/HTTPServerRequestImpl.h>
 #include <Poco/Net/HTTPServerResponseImpl.h>
-#include <Poco/Net/HTTPRequestHandler.h>
-#include <Poco/Net/HTTPRequestHandlerFactory.h>
+//#include <Poco/Net/HTTPRequestHandler.h>
+//#include "ProxyRequestHandler.h"
+//#include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Net/NetException.h>
 #include <Poco/NumberFormatter.h>
 #include <Poco/Timestamp.h>
@@ -30,7 +31,7 @@ namespace Poco {
 namespace Net {
 
 
-HTTPServerConnection::HTTPServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, HTTPRequestHandlerFactory::Ptr pFactory):
+ProxyServerConnection::ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory):
 	TCPServerConnection(socket),
 	_pParams(pParams),
 	_pFactory(pFactory),
@@ -38,15 +39,15 @@ HTTPServerConnection::HTTPServerConnection(const StreamSocket& socket, HTTPServe
 {
 	poco_check_ptr (pFactory);
 
-	_pFactory->serverStopped += Poco::delegate(this, &HTTPServerConnection::onServerStopped);
+	_pFactory->serverStopped += Poco::delegate(this, &ProxyServerConnection::onServerStopped);
 }
 
 
-HTTPServerConnection::~HTTPServerConnection()
+ProxyServerConnection::~ProxyServerConnection()
 {
 	try
 	{
-		_pFactory->serverStopped -= Poco::delegate(this, &HTTPServerConnection::onServerStopped);
+		_pFactory->serverStopped -= Poco::delegate(this, &ProxyServerConnection::onServerStopped);
 	}
 	catch (...)
 	{
@@ -55,7 +56,7 @@ HTTPServerConnection::~HTTPServerConnection()
 }
 
 
-void HTTPServerConnection::run()
+void ProxyServerConnection::run()
 {
 	std::string server = _pParams->getSoftwareVersion();
 	HTTPServerSession session(socket(), _pParams);
@@ -67,8 +68,17 @@ void HTTPServerConnection::run()
 			Poco::FastMutex::ScopedLock lock(_mutex);
 			if (!_stopped)
 			{
+
+				// Try to parse the data as HTTP, otherwise this is just raw data (probably post-CONNECT)
+				// ^ Is this a safe assumption. Probably not. So we must verify the above claim.
+
+				LOG(INFO) << "Creating response obj..." << std::endl;
 				HTTPServerResponseImpl response(session);
+				LOG(INFO) << "Creating request obj..." << std::endl;
+
 				HTTPServerRequestImpl request(response, session, _pParams);
+
+				LOG(INFO) << "Sucessfully parsed request." << std::endl;
 
 				Poco::Timestamp now;
 				response.setDate(now);
@@ -79,13 +89,14 @@ void HTTPServerConnection::run()
 					response.set("Server", server);
 				try
 				{
-					std::unique_ptr<HTTPRequestHandler> pHandler(_pFactory->createRequestHandler(request));
+					std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createProxyRequestHandler(request));
 					if (pHandler.get())
 					{
 						if (request.getExpectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
 							response.sendContinue();
 
-						pHandler->handleRequest(request, response);
+						// This is an HTTP request so set httpData = true
+						pHandler->handleTCPRequest(request, response, true);
 
 						LOG(INFO) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
 						<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
@@ -135,7 +146,7 @@ void HTTPServerConnection::run()
 }
 
 
-void HTTPServerConnection::sendErrorResponse(HTTPServerSession& session, HTTPResponse::HTTPStatus status)
+void ProxyServerConnection::sendErrorResponse(HTTPServerSession& session, HTTPResponse::HTTPStatus status)
 {
 	LOG(ERROR) << "Send error response="
 	<< status << std::endl;
@@ -149,7 +160,7 @@ void HTTPServerConnection::sendErrorResponse(HTTPServerSession& session, HTTPRes
 }
 
 
-void HTTPServerConnection::onServerStopped(const bool& abortCurrent)
+void ProxyServerConnection::onServerStopped(const bool& abortCurrent)
 {
 	_stopped = true;
 	if (abortCurrent)

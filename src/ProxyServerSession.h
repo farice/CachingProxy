@@ -21,7 +21,7 @@
 #include <Poco/Net/Net.h>
 #include <Poco/Net/HTTPSession.h>
 #include <Poco/Net/SocketAddress.h>
-#include "HTTPServerSession.h"
+#include "ProxyServerSession.h"
 #include <Poco/Net/HTTPServerParams.h>
 #include <Poco/Timespan.h>
 
@@ -30,17 +30,17 @@ namespace Poco {
 namespace Net {
 
 
-class Net_API HTTPServerSession: public HTTPSession
+class Net_API ProxyServerSession: public HTTPSession
 	/// This class handles the server side of a
 	/// HTTP session. It is used internally by
 	/// HTTPServer.
 {
 public:
-	HTTPServerSession(const StreamSocket& socket, HTTPServerParams::Ptr pParams);
-		/// Creates the HTTPServerSession.
+	ProxyServerSession(const StreamSocket& socket, HTTPServerParams::Ptr pParams);
+		/// Creates the ProxyServerSession.
 
-	virtual ~HTTPServerSession();
-		/// Destroys the HTTPServerSession.
+	virtual ~ProxyServerSession();
+		/// Destroys the ProxyServerSession.
 
 	bool hasMoreRequests();
 		/// Returns true if there are requests available.
@@ -64,7 +64,7 @@ private:
 //
 // inlines
 //
-inline bool HTTPServerSession::canKeepAlive() const
+inline bool ProxyServerSession::canKeepAlive() const
 {
 	return _maxKeepAliveRequests != 0;
 }
@@ -73,4 +73,4 @@ inline bool HTTPServerSession::canKeepAlive() const
 } } // namespace Poco::Net
 
 
-#endif // Net_HTTPServerSession_INCLUDED
+#endif // Net_ProxyServerSession_INCLUDED
