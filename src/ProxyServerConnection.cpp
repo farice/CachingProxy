@@ -266,8 +266,8 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 			}
 
 			LOG(INFO) << "checking number of client bytes..." << endl;
-				if (nClientBytes==0){
-						LOG(INFO) << "Client closes connection!" << endl << flush;
+				if (nClientBytes==0 || nDestinationBytes == 0){
+						LOG(INFO) << "Client or destination closes connection!" << endl << flush;
 						isOpen = false;
 				}
 
