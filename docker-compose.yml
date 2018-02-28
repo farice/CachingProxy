@@ -3,7 +3,7 @@ version: '2'
 services:
   proxy:
     build: .
-    command: bash -c "ls -a && g++ -o proxy_server proxy_server.cpp HTTPServerConnection.cpp -lPocoNet -lPocoUtil -lPocoFoundation -lPocoCrypto -lPocoNetSSL -lssl -lcrypto -std=c++11 && ./proxy_server"
+    command: bash -c "ls -a && make all && ./proxy_server"
     volumes:
       - ./src:/src
     ports:
