@@ -203,11 +203,19 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 
 	bool isOpen = true;
 	// 10s timeout
-	Poco::Timespan timeOut(60,0);
+	Poco::Timespan timeOut(1,0);
 
 	StreamSocket destinationServer = StreamSocket();
 	SocketAddress addr = SocketAddress(host);
 	destinationServer.connect(addr);
+
+	LOG(INFO) << session.socket().getBlocking() << "-" << session.socket().getKeepAlive() << "-" << session.socket().getNoDelay()
+	<< "-" << session.socket().getReceiveBufferSize() << "-" << session.socket().getReceiveTimeout().seconds() << "-"
+	<< session.socket().getSendBufferSize() << "-" << session.socket().getSendTimeout().seconds() << endl;
+
+	LOG(INFO) << destinationServer.getBlocking() << "-" << destinationServer.getKeepAlive() << "-" << destinationServer.getNoDelay()
+	<< "-" << destinationServer.getReceiveBufferSize() << "-" << destinationServer.getReceiveTimeout().seconds() << "-"
+	<< destinationServer.getSendBufferSize() << "-" << destinationServer.getSendTimeout().seconds() << endl;
 
 	unsigned char okMessage[] = "200 OK";
 	session.socket().sendBytes(okMessage, 7);
@@ -255,10 +263,10 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 					LOG(ERROR) << "Network error=" << exc.displayText() << endl;
 					isOpen = false;
 			}
-//				if (nClientBytes==0 && nDestinationBytes==0){
-//						LOG(INFO) << "Client and server close connection!" << endl << flush;
-//						isOpen = false;
-//				}
+				if (nClientBytes==0){
+						LOG(INFO) << "Client closes connection!" << endl << flush;
+						isOpen = false;
+				}
 //				else{
 
 //					}
