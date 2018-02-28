@@ -31,11 +31,13 @@ using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace std;
 
-void connect(HTTPServerRequest &req, HTTPServerResponse &resp, ostream& out) {
+void connectRequest(HTTPServerRequest &req, HTTPServerResponse &resp) {
   // CONNECT
   LOG(INFO) << "HTTP CONNECT" << std::endl
     << "Host=" << req.getHost() << std::endl;
 
+  resp.setStatus(HTTPResponse::HTTP_ACCEPTED);
+  resp.setKeepAlive(true);
 }
 
 void sendPlainRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
@@ -97,11 +99,10 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   if (req.getMethod() == "CONNECT") {
     //resp.setContentType("NO_CONTENT_TYPE");
     // Keep connection alive to transmit raw TCP
-    resp.setStatus(HTTPResponse::HTTP_ACCEPTED);
-    resp.setKeepAlive(true);
-    connect(req, resp, out);
+    connectRequest(req, resp);
     // TODO
   } else {
+
     resp.setContentType("text/html");
     LOG(INFO) << "Plain request" << std::endl;
     serveRequest(req, out);

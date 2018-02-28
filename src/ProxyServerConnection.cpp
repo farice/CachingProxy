@@ -100,27 +100,86 @@ void ProxyServerConnection::run()
 	int count = 0;
 	// Each thread has an HTTPServerSession obj and hence is either transmitting HTTP or HTTPS (post-connect) data
 	bool connect = false;
+	StreamSocket destinationServer = StreamSocket();
 	while (!_stopped && session.hasMoreRequests())
 	{
-
+		LOG(INFO) << "Has more" << std::endl;
 		try
 		{
+			LOG(INFO) << "Grabbing lock." << std::endl;
 			Poco::FastMutex::ScopedLock lock(_mutex);
 			if (!_stopped)
 			{
-				unsigned char incomingBuffer[1000];
 
 				count++;
-				LOG(INFO) << "Request count=" <<  count << "from host=" << session.socket().peerAddress().host().toString() << std::endl;
-				//session.socket().receiveBytes(incomingBuffer, sizeof(incomingBuffer));
-				//LOG(INFO) << "data=" << incomingBuffer << endl << flush;
-				// Try to parse the data as HTTP, otherwise this is just raw data (probably post-CONNECT)
-				// ^ Is this a safe assumption. Probably not. So we must verify the above claim.
+				LOG(INFO) << "Request count=" <<  count << "from host=" << session.clientAddress().toString() << std::endl;
 
-				LOG(INFO) << "Creating response obj..." << std::endl;
+				//LOG(INFO) << "Creating response obj..." << std::endl;
 				HTTPServerResponseImpl response(session);
-				LOG(INFO) << "Creating request obj..." << std::endl;
 
+				if (connect) {
+					unsigned char clientBuffer[10000];
+					unsigned char destinationBuffer[10000];
+
+					bool isOpen = true;
+					// 10s timeout
+	        Poco::Timespan timeOut(60,0);
+
+					while(isOpen){
+
+					if (session.hasMoreRequests() == false && destinationServer.poll(timeOut, Socket::SELECT_READ) == false){
+							LOG(INFO) << "Timeout" << endl << flush;
+					}
+					else{
+							LOG(INFO) << "Status: SELECT_READ" << endl  << flush;
+							int nClientBytes = -1;
+							int nDestinationBytes = -1;
+
+							try {
+								if (session.hasMoreRequests() == true) {
+									nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
+								}
+								if (destinationServer.poll(timeOut, Socket::SELECT_READ) == true) {
+									nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
+								}
+								if (nClientBytes > 0 && destinationServer.poll(timeOut, Socket::SELECT_WRITE) == true) {
+									LOG(INFO) << "Number of bytes received from client=" << nClientBytes << endl << flush;
+									LOG(INFO) << "Client Bytes=" << clientBuffer << endl << flush;
+									LOG(INFO) << "Send bytes to destination server" << std::endl;
+									destinationServer.sendBytes(clientBuffer, nClientBytes);
+								}
+
+								if (nDestinationBytes > 0 && session.socket().poll(timeOut, Socket::SELECT_WRITE) == true) {
+									LOG(INFO) << "Number of bytes received from destination=" << nDestinationBytes << endl << flush;
+									LOG(INFO) << "Destination Bytes=" << destinationBuffer << endl << flush;
+									LOG(INFO) << "Send bytes to client server" << std::endl;
+									session.socket().sendBytes(destinationBuffer, nDestinationBytes);
+								}
+
+									//LOG(INFO) << "data=" << incomingBuffer << endl << flush;
+							}
+							catch (Poco::Exception& exc) {
+									//Handle your network errors.
+									LOG(ERROR) << "Network error=" << exc.displayText() << endl;
+									isOpen = false;
+							}
+			//				if (nClientBytes==0 && nDestinationBytes==0){
+			//						LOG(INFO) << "Client and server close connection!" << endl << flush;
+			//						isOpen = false;
+			//				}
+			//				else{
+
+		//					}
+					}
+
+					}
+					// CONNECT Connection terminated
+					//session.setKeepAlive(false);
+					continue;
+				}
+
+				// MARK: - Past this point we are under the assumption that this is an uncencrypted HTTP Request
+				//LOG(INFO) << "Creating request obj..." << std::endl;
 				HTTPServerRequestImpl request(response, session, _pParams);
 
 				LOG(INFO) << "Sucessfully parsed request." << std::endl;
@@ -143,7 +202,11 @@ void ProxyServerConnection::run()
 						// This is an HTTP request so set httpData = true
 						pHandler->handleTCPRequest(request, response, true);
 						LOG(INFO) << "responseStatus=" << response.getStatus() << std::endl;
+
 						if (request.getMethod() == "CONNECT" && response.getStatus() == HTTPResponse::HTTP_ACCEPTED) {
+							//LOG(INFO) << "Establishing connection with host=" << request.getHost().toString() << std::endl;
+							SocketAddress addr = SocketAddress(request.getHost());
+							destinationServer.connect(addr);
 							connect = true;
 							LOG(INFO) << "Succesful CONNECT request for this session." << std::endl;
 						}
@@ -151,12 +214,13 @@ void ProxyServerConnection::run()
 						LOG(INFO) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
 						<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
 						session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
+
 					}
 					else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
 				}
 				catch (Poco::Exception&)
 				{
-					LOG(ERROR) << "EXCEPTION: requestHandling" << std::endl;
+					//LOG(ERROR) << "EXCEPTION: requestHandling" << std::endl;
 
 					if (!response.sent())
 					{
