@@ -18,7 +18,7 @@ ProxyRequestHandlerFactory::~ProxyRequestHandlerFactory()
 
 ProxyRequestHandler* ProxyRequestHandlerFactory::createRequestHandler(const HTTPServerRequest &)
   {
-    LOG(INFO) << "Create request handler" << endl;
+    LOG(DEBUG) << "Create request handler" << endl;
     return new ProxyRequestHandler;
   }
 

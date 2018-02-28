@@ -65,25 +65,25 @@ void ProxyServerConnection::run()
 	//StreamSocket destinationServer = StreamSocket();
 	while (!_stopped && session.hasMoreRequests())
 	{
-		LOG(INFO) << "Has more" << std::endl;
+		LOG(DEBUG) << "Has more" << std::endl;
 		try
 		{
-			LOG(INFO) << "Grabbing lock." << std::endl;
+			LOG(DEBUG) << "Grabbing lock." << std::endl;
 			Poco::FastMutex::ScopedLock lock(_mutex);
 			if (!_stopped)
 			{
 
 				count++;
-				LOG(INFO) << "Request count=" <<  count << "from host=" << session.clientAddress().toString() << std::endl;
+				LOG(DEBUG) << "Request count=" <<  count << "from host=" << session.clientAddress().toString() << std::endl;
 
-				//LOG(INFO) << "Creating response obj..." << std::endl;
+				//LOG(DEBUG) << "Creating response obj..." << std::endl;
 				HTTPServerResponseImpl response(session);
 
 				// MARK: - Past this point we are under the assumption that this is an uncencrypted HTTP Request
-				//LOG(INFO) << "Creating request obj..." << std::endl;
+				//LOG(DEBUG) << "Creating request obj..." << std::endl;
 				HTTPServerRequestImpl request(response, session, _pParams);
 
-				LOG(INFO) << "Sucessfully parsed request." << std::endl;
+				LOG(DEBUG) << "Sucessfully parsed request." << std::endl;
 
 				Poco::Timestamp now;
 				response.setDate(now);
@@ -104,14 +104,14 @@ void ProxyServerConnection::run()
 						if (request.getMethod() != "CONNECT") {
 							pHandler->handleRequest(request, response);
 						} else {
-							LOG(INFO) << "Potential CONNECT request for this session." << std::endl;
+							LOG(DEBUG) << "Potential CONNECT request for this session." << std::endl;
 							connect = true;
 							relayData(session, request.getHost());
 						}
 
-						LOG(INFO) << "responseStatus=" << response.getStatus() << std::endl;
+						LOG(DEBUG) << "responseStatus=" << response.getStatus() << std::endl;
 
-						LOG(INFO) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
+						LOG(DEBUG) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
 						<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
 						session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
 
@@ -171,11 +171,11 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 	SocketAddress addr = SocketAddress(host);
 	destinationServer.connect(addr);
 
-	LOG(INFO) << session.socket().getBlocking() << "-" << session.socket().getKeepAlive() << "-" << session.socket().getNoDelay()
+	LOG(DEBUG) << session.socket().getBlocking() << "-" << session.socket().getKeepAlive() << "-" << session.socket().getNoDelay()
 	<< "-" << session.socket().getReceiveBufferSize() << "-" << session.socket().getReceiveTimeout().seconds() << "-"
 	<< session.socket().getSendBufferSize() << "-" << session.socket().getSendTimeout().seconds() << endl;
 
-	LOG(INFO) << destinationServer.getBlocking() << "-" << destinationServer.getKeepAlive() << "-" << destinationServer.getNoDelay()
+	LOG(DEBUG) << destinationServer.getBlocking() << "-" << destinationServer.getKeepAlive() << "-" << destinationServer.getNoDelay()
 	<< "-" << destinationServer.getReceiveBufferSize() << "-" << destinationServer.getReceiveTimeout().seconds() << "-"
 	<< destinationServer.getSendBufferSize() << "-" << destinationServer.getSendTimeout().seconds() << endl;
 
@@ -186,34 +186,32 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 	destinationServer.setBlocking(false);
 	//session.setKeepAlive(true);
 
-	LOG(INFO) << "Handling request as HTTPS data" << std::endl;
+	LOG(DEBUG) << "Handling request as HTTPS data" << std::endl;
 	while(isOpen){
 			int nClientBytes = -1;
 			int nDestinationBytes = -1;
 
 			try {
 				if (session.socket().poll(timeOut, Socket::SELECT_READ) == true) {
-					LOG(INFO) << "Session has more requests!" << endl  << flush;
+					LOG(DEBUG) << "Session has more requests!" << endl  << flush;
 					nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
 				}
 				if (destinationServer.poll(timeOut, Socket::SELECT_READ) == true) {
-					LOG(INFO) << "Destination server has more requests!" << endl  << flush;
+					LOG(DEBUG) << "Destination server has more requests!" << endl  << flush;
 					nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
 				}
 				if (nClientBytes > 0 && destinationServer.poll(timeOut, Socket::SELECT_WRITE) == true) {
-					LOG(INFO) << "Number of bytes received from client=" << nClientBytes << endl << flush;
-					LOG(INFO) << "Client Bytes=" << clientBuffer << endl << flush;
-					LOG(INFO) << "Sending bytes to destination server.." << std::endl;
+					LOG(DEBUG) << "Number of bytes received from client=" << nClientBytes << endl << flush;
+					LOG(DEBUG) << "Sending bytes to destination server.." << std::endl;
 					destinationServer.sendBytes(clientBuffer, nClientBytes);
-					LOG(INFO) << "Sent bytes to destination server" << std::endl;
+					LOG(DEBUG) << "Sent bytes to destination server" << std::endl;
 				}
 
 				if (nDestinationBytes > 0 && session.socket().poll(timeOut, Socket::SELECT_WRITE) == true) {
-					LOG(INFO) << "Number of bytes received from destination=" << nDestinationBytes << endl << flush;
-					LOG(INFO) << "Destination Bytes=" << destinationBuffer << endl << flush;
-					LOG(INFO) << "Sending bytes to client server..." << std::endl;
+					LOG(DEBUG) << "Number of bytes received from destination=" << nDestinationBytes << endl << flush;
+					LOG(DEBUG) << "Sending bytes to client server..." << std::endl;
 					session.socket().sendBytes(destinationBuffer, nDestinationBytes);
-					LOG(INFO) << "Sent bytes to client server" << std::endl;
+					LOG(DEBUG) << "Sent bytes to client server" << std::endl;
 					//Poco::StreamCopier::copyStream(destinationBuffer, out);
 				}
 			}
@@ -224,7 +222,7 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 			}
 
 				if (nClientBytes==0 || nDestinationBytes == 0){
-						LOG(INFO) << "Client or destination closes connection!" << endl << flush;
+						LOG(DEBUG) << "Client or destination closes connection!" << endl << flush;
 						isOpen = false;
 				}
 

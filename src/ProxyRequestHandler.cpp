@@ -37,7 +37,11 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   std::ostream& out = resp.send();
 
-  LOG(INFO) << "Plain request" << std::endl;
+  LOG(DEBUG) << "Plain request" << std::endl;
+  if (req.has("Cache-Control")) {
+    LOG(DEBUG) << "Cache-Control=" << req.get("Cache-control");
+  }
+
   try
   {
   // prepare session
@@ -48,22 +52,45 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   if (path.empty()) path = "/";
 
   // send request
-  LOG(INFO) << "Creating session to " << uri.getHost() << std::endl;
+  LOG(DEBUG) << "Creating session to " << uri.getHost() << std::endl;
   HTTPClientSession session(uri.getHost(), uri.getPort());
   HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
-  //proxy_req.setContentType("application/x-www-form-urlencoded");
-  session.sendRequest(proxy_req);
+
+  if(proxy_req.getMethod() == "POST") {
+    LOG(DEBUG) << "POST request to=" << uri.getHost() << std::endl;
+    proxy_req.setContentType("application/x-www-form-urlencoded");
+    proxy_req.setContentLength(req.getContentLength());
+    Poco::Net::NameValueCollection cookies;
+
+    LOG(DEBUG) << "Post content length=" << proxy_req.getContentLength() << std::endl;
+    req.getCookies(cookies);
+    proxy_req.setCookies(cookies);
+    //LOG(DEBUG) << "csrf_token=" << req.get("csrf_token");
+
+    std::ostream& opost = session.sendRequest(proxy_req);
+    std::istream &ipost = req.stream();
+
+    LOG(DEBUG) << "Writing body to POST stream" << endl;
+    opost << "csrfmiddlewaretoken=BjlcZDznXYIvs1SxyCXhw0JzzBKs5VXpWGq8q4hFOnKoGPTpUsAWFJF5jd81Bo2S&username=farice&password=farice23&next=";
+    //Poco::StreamCopier::copyStream(ipost, opost);
+
+    //proxy_req.write(std::cout);
+
+  } else {
+    proxy_req.setContentType("text/html");
+    session.sendRequest(proxy_req);
+  }
+
 
   // get response
   HTTPResponse proxy_resp;
-  LOG(INFO) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
   // create istream for session response
   istream &is = session.receiveResponse(proxy_resp);
-
+  LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
   // Copy HTTP stream to app server response stream
   Poco::StreamCopier::copyStream(is, out);
 
-  LOG(INFO) << "Requesting url=" << uri.getHost() << std::endl
+  LOG(DEBUG) << "Requesting url=" << uri.getHost() << std::endl
     << "port=" << uri.getPort() << endl
     << "path=" << path << endl;
 
@@ -80,7 +107,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   }
 
   //out << resp.getStatus() << " - " << resp.getReason() << endl;
-  LOG(INFO) << resp.getStatus() << " - " << resp.getReason() << std::endl;
+  LOG(DEBUG) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
 ProxyRequestHandler::ProxyRequestHandler() {
