@@ -15,7 +15,6 @@ public:
   ProxyRequestHandlerFactory();
   ~ProxyRequestHandlerFactory();
   virtual ProxyRequestHandler* createRequestHandler(const HTTPServerRequest &);
-  ProxyRequestHandler* createProxyRequestHandler(const HTTPServerRequest &);
   Poco::BasicEvent<const bool> serverStopped;
 };
 

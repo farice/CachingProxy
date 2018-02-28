@@ -89,7 +89,7 @@ void ProxyServerConnection::run()
 					response.set("Server", server);
 				try
 				{
-					std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createProxyRequestHandler(request));
+					std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
 					if (pHandler.get())
 					{
 						if (request.getExpectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
