@@ -55,20 +55,65 @@ ProxyServerConnection::~ProxyServerConnection()
 	}
 }
 
+/*
+void ProxyServerConnection::run() {
+	cout << "New connection from: " << socket().peerAddress().host().toString() <<  endl << flush;
+        bool isOpen = true;
+        Poco::Timespan timeOut(10,0);
+        unsigned char incomingBuffer[1000];
+        while(isOpen){
+            if (socket().poll(timeOut,Poco::Net::Socket::SELECT_READ) == false){
+                cout << "TIMEOUT!" << endl << flush;
+            }
+            else{
+                cout << "RX EVENT!!! ---> "   << flush;
+                int nBytes = -1;
+
+                try {
+                    nBytes = socket().receiveBytes(incomingBuffer, sizeof(incomingBuffer));
+                }
+                catch (Poco::Exception& exc) {
+                    //Handle your network errors.
+                    cerr << "Network error: " << exc.displayText() << endl;
+                    isOpen = false;
+                }
+
+
+                if (nBytes==0){
+                    cout << "Client closes connection!" << endl << flush;
+                    isOpen = false;
+                }
+                else{
+                    cout << "Receiving nBytes: " << nBytes << endl << flush;
+										cout << "Bytes" << incomingBuffer << endl << flush;
+                }
+            }
+        }
+        cout << "Connection finished!" << endl << flush;
+    }
+*/
 
 void ProxyServerConnection::run()
 {
 	std::string server = _pParams->getSoftwareVersion();
 	HTTPServerSession session(socket(), _pParams);
+	int count = 0;
+	// Each thread has an HTTPServerSession obj and hence is either transmitting HTTP or HTTPS (post-connect) data
+	bool connect = false;
 	while (!_stopped && session.hasMoreRequests())
 	{
-		LOG(INFO) << "MORE REQUESTS" << std::endl;
+
 		try
 		{
 			Poco::FastMutex::ScopedLock lock(_mutex);
 			if (!_stopped)
 			{
+				unsigned char incomingBuffer[1000];
 
+				count++;
+				LOG(INFO) << "Request count=" <<  count << "from host=" << session.socket().peerAddress().host().toString() << std::endl;
+				//session.socket().receiveBytes(incomingBuffer, sizeof(incomingBuffer));
+				//LOG(INFO) << "data=" << incomingBuffer << endl << flush;
 				// Try to parse the data as HTTP, otherwise this is just raw data (probably post-CONNECT)
 				// ^ Is this a safe assumption. Probably not. So we must verify the above claim.
 
@@ -97,6 +142,11 @@ void ProxyServerConnection::run()
 
 						// This is an HTTP request so set httpData = true
 						pHandler->handleTCPRequest(request, response, true);
+						LOG(INFO) << "responseStatus=" << response.getStatus() << std::endl;
+						if (request.getMethod() == "CONNECT" && response.getStatus() == HTTPResponse::HTTP_ACCEPTED) {
+							connect = true;
+							LOG(INFO) << "Succesful CONNECT request for this session." << std::endl;
+						}
 
 						LOG(INFO) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
 						<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;

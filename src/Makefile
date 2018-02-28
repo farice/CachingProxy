@@ -2,11 +2,10 @@
 CC = g++
 CFLAGS = -g -o
 LINKED = -lPocoNet -lPocoUtil -lPocoFoundation -lPocoCrypto -lPocoNetSSL -lssl -lcrypto
-OBJ = ProxyServerConnection.o ProxyServerSession.o ProxyRequestHandler.o ProxyRequestHandlerFactory.o proxy_server.o
+OBJ = ProxyServerConnection.o ProxyRequestHandler.o ProxyRequestHandlerFactory.o proxy_server.o
 
 all:
 	$(CC) -c proxy_server.cpp -std=c++11
-	$(CC) -c ProxyServerSession.cpp -std=c++11
 	$(CC) -c ProxyRequestHandler.cpp -std=c++11
 	$(CC) -c ProxyRequestHandlerFactory.cpp -std=c++11
 	$(CC) -c ProxyServerConnection.cpp -std=c++11

@@ -97,6 +97,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   if (req.getMethod() == "CONNECT") {
     //resp.setContentType("NO_CONTENT_TYPE");
     // Keep connection alive to transmit raw TCP
+    resp.setStatus(HTTPResponse::HTTP_ACCEPTED);
     resp.setKeepAlive(true);
     connect(req, resp, out);
     // TODO
@@ -124,5 +125,5 @@ ProxyRequestHandler::ProxyRequestHandler() {
 
 }
 ProxyRequestHandler::~ProxyRequestHandler() {
-  
+
 }

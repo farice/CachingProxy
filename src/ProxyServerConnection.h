@@ -29,9 +29,6 @@ namespace Poco {
 namespace Net {
 
 
-class HTTPServerSession;
-
-
 class Net_API ProxyServerConnection: public TCPServerConnection
 	/// This subclass of TCPServerConnection handles HTTP
 	/// connections.
