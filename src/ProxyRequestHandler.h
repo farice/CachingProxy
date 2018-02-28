@@ -27,9 +27,6 @@ public:
   ProxyRequestHandler();
   ~ProxyRequestHandler();
 
-  void sendPlainRequest(HTTPServerRequest &req, std::string path, std::ostream& out, Poco::URI uri);
-  void serveRequest(HTTPServerRequest &req, std::ostream& out);
-  //void relayData(HTTPServerSession session, StreamSocket destinationServer);
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp);
 private:
   ProxyRequestHandler(const ProxyRequestHandler&);
