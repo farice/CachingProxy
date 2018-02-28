@@ -100,7 +100,7 @@ void ProxyServerConnection::run()
 	int count = 0;
 	// Each thread has an HTTPServerSession obj and hence is either transmitting HTTP or HTTPS (post-connect) data
 	bool connect = false;
-	StreamSocket destinationServer = StreamSocket();
+	//StreamSocket destinationServer = StreamSocket();
 	while (!_stopped && session.hasMoreRequests())
 	{
 		LOG(INFO) << "Has more" << std::endl;
@@ -116,67 +116,6 @@ void ProxyServerConnection::run()
 
 				//LOG(INFO) << "Creating response obj..." << std::endl;
 				HTTPServerResponseImpl response(session);
-
-				if (connect) {
-					unsigned char clientBuffer[10000];
-					unsigned char destinationBuffer[10000];
-
-					bool isOpen = true;
-					// 10s timeout
-	        Poco::Timespan timeOut(60,0);
-
-					while(isOpen){
-
-					if (session.hasMoreRequests() == false && destinationServer.poll(timeOut, Socket::SELECT_READ) == false){
-							LOG(INFO) << "Timeout" << endl << flush;
-					}
-					else{
-							LOG(INFO) << "Status: SELECT_READ" << endl  << flush;
-							int nClientBytes = -1;
-							int nDestinationBytes = -1;
-
-							try {
-								if (session.hasMoreRequests() == true) {
-									nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
-								}
-								if (destinationServer.poll(timeOut, Socket::SELECT_READ) == true) {
-									nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
-								}
-								if (nClientBytes > 0 && destinationServer.poll(timeOut, Socket::SELECT_WRITE) == true) {
-									LOG(INFO) << "Number of bytes received from client=" << nClientBytes << endl << flush;
-									LOG(INFO) << "Client Bytes=" << clientBuffer << endl << flush;
-									LOG(INFO) << "Send bytes to destination server" << std::endl;
-									destinationServer.sendBytes(clientBuffer, nClientBytes);
-								}
-
-								if (nDestinationBytes > 0 && session.socket().poll(timeOut, Socket::SELECT_WRITE) == true) {
-									LOG(INFO) << "Number of bytes received from destination=" << nDestinationBytes << endl << flush;
-									LOG(INFO) << "Destination Bytes=" << destinationBuffer << endl << flush;
-									LOG(INFO) << "Send bytes to client server" << std::endl;
-									session.socket().sendBytes(destinationBuffer, nDestinationBytes);
-								}
-
-									//LOG(INFO) << "data=" << incomingBuffer << endl << flush;
-							}
-							catch (Poco::Exception& exc) {
-									//Handle your network errors.
-									LOG(ERROR) << "Network error=" << exc.displayText() << endl;
-									isOpen = false;
-							}
-			//				if (nClientBytes==0 && nDestinationBytes==0){
-			//						LOG(INFO) << "Client and server close connection!" << endl << flush;
-			//						isOpen = false;
-			//				}
-			//				else{
-
-		//					}
-					}
-
-					}
-					// CONNECT Connection terminated
-					//session.setKeepAlive(false);
-					continue;
-				}
 
 				// MARK: - Past this point we are under the assumption that this is an uncencrypted HTTP Request
 				//LOG(INFO) << "Creating request obj..." << std::endl;
@@ -200,16 +139,15 @@ void ProxyServerConnection::run()
 							response.sendContinue();
 
 						// This is an HTTP request so set httpData = true
-						pHandler->handleTCPRequest(request, response, true);
-						LOG(INFO) << "responseStatus=" << response.getStatus() << std::endl;
-
-						if (request.getMethod() == "CONNECT" && response.getStatus() == HTTPResponse::HTTP_ACCEPTED) {
-							//LOG(INFO) << "Establishing connection with host=" << request.getHost().toString() << std::endl;
-							SocketAddress addr = SocketAddress(request.getHost());
-							destinationServer.connect(addr);
+						if (request.getMethod() != "CONNECT") {
+							pHandler->handleRequest(request, response);
+						} else {
+							LOG(INFO) << "Potential CONNECT request for this session." << std::endl;
 							connect = true;
-							LOG(INFO) << "Succesful CONNECT request for this session." << std::endl;
+							relayData(session, request.getHost());
 						}
+
+						LOG(INFO) << "responseStatus=" << response.getStatus() << std::endl;
 
 						LOG(INFO) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
 						<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
@@ -257,6 +195,78 @@ void ProxyServerConnection::run()
 			else throw;
 		}
 	}
+}
+
+void ProxyServerConnection::relayData(HTTPServerSession& session, std::string host) {
+	unsigned char clientBuffer[10000];
+	unsigned char destinationBuffer[10000];
+
+	bool isOpen = true;
+	// 10s timeout
+	Poco::Timespan timeOut(60,0);
+
+	StreamSocket destinationServer = StreamSocket();
+	SocketAddress addr = SocketAddress(host);
+	destinationServer.connect(addr);
+
+	unsigned char okMessage[] = "200 OK";
+	session.socket().sendBytes(okMessage, 7);
+	//session.setKeepAlive(true);
+
+	LOG(INFO) << "Handling request as HTTPS data" << std::endl;
+	while(isOpen){
+
+	if (session.hasMoreRequests() == false && destinationServer.poll(timeOut, Socket::SELECT_READ) == false){
+			LOG(INFO) << "Timeout" << endl << flush;
+	}
+	else{
+			LOG(INFO) << "Status: SELECT_READ" << endl  << flush;
+			int nClientBytes = -1;
+			int nDestinationBytes = -1;
+
+			try {
+				if (session.hasMoreRequests() == true) {
+					LOG(INFO) << "Session has more requests" << endl  << flush;
+					nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
+				}
+				if (destinationServer.poll(timeOut, Socket::SELECT_READ) == true) {
+					LOG(INFO) << "Destination server has more requests" << endl  << flush;
+					nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
+				}
+				if (nClientBytes > 0 && destinationServer.poll(timeOut, Socket::SELECT_WRITE) == true) {
+					LOG(INFO) << "Number of bytes received from client=" << nClientBytes << endl << flush;
+					LOG(INFO) << "Client Bytes=" << clientBuffer << endl << flush;
+					LOG(INFO) << "Send bytes to destination server" << std::endl;
+					destinationServer.sendBytes(clientBuffer, nClientBytes);
+				}
+
+				if (nDestinationBytes > 0 && session.socket().poll(timeOut, Socket::SELECT_WRITE) == true) {
+					LOG(INFO) << "Number of bytes received from destination=" << nDestinationBytes << endl << flush;
+					LOG(INFO) << "Destination Bytes=" << destinationBuffer << endl << flush;
+					LOG(INFO) << "Send bytes to client server" << std::endl;
+					session.socket().sendBytes(destinationBuffer, nDestinationBytes);
+					//Poco::StreamCopier::copyStream(destinationBuffer, out);
+				}
+
+					//LOG(INFO) << "data=" << incomingBuffer << endl << flush;
+			}
+			catch (Poco::Exception& exc) {
+					//Handle your network errors.
+					LOG(ERROR) << "Network error=" << exc.displayText() << endl;
+					isOpen = false;
+			}
+//				if (nClientBytes==0 && nDestinationBytes==0){
+//						LOG(INFO) << "Client and server close connection!" << endl << flush;
+//						isOpen = false;
+//				}
+//				else{
+
+//					}
+	}
+
+	}
+
+	session.setKeepAlive(false);
 }
 
 

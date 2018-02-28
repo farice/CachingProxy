@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <cstdlib>
 
-#include<Poco/Net/HTTPServerConnectionFactory.h>
+#include <Poco/Net/HTTPServerConnectionFactory.h>
 #include <Poco/Net/SSLManager.h>
 #include <Poco/Net/SSLException.h>
 #include <Poco/Net/HTTPClientSession.h>
@@ -24,6 +24,7 @@
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
+#include <Poco/Net/HTTPServerSession.h>
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/Exception.h>
 
@@ -31,16 +32,7 @@ using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace std;
 
-void connectRequest(HTTPServerRequest &req, HTTPServerResponse &resp) {
-  // CONNECT
-  LOG(INFO) << "HTTP CONNECT" << std::endl
-    << "Host=" << req.getHost() << std::endl;
-
-  resp.setStatus(HTTPResponse::HTTP_ACCEPTED);
-  resp.setKeepAlive(true);
-}
-
-void sendPlainRequest(HTTPServerRequest &req, string path, ostream& out, Poco::URI uri) {
+void ProxyRequestHandler::sendPlainRequest(HTTPServerRequest &req, std::string path, std::ostream& out, Poco::URI uri) {
   // send request
   LOG(INFO) << "Creating session to " << uri.getHost() << std::endl;
   HTTPClientSession session(uri.getHost(), uri.getPort());
@@ -58,7 +50,7 @@ void sendPlainRequest(HTTPServerRequest &req, string path, ostream& out, Poco::U
 
 }
 
-void serveRequest(HTTPServerRequest &req, ostream& out) {
+void ProxyRequestHandler::serveRequest(HTTPServerRequest &req, std::ostream& out) {
   try
   {
   // prepare session
@@ -94,32 +86,14 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   resp.setStatus(HTTPResponse::HTTP_OK);
 
-  ostream& out = resp.send();
+  std::ostream& out = resp.send();
 
-  if (req.getMethod() == "CONNECT") {
-    //resp.setContentType("NO_CONTENT_TYPE");
-    // Keep connection alive to transmit raw TCP
-    connectRequest(req, resp);
-    // TODO
-  } else {
-
-    resp.setContentType("text/html");
-    LOG(INFO) << "Plain request" << std::endl;
-    serveRequest(req, out);
-  }
+  resp.setContentType("text/html");
+  LOG(INFO) << "Plain request" << std::endl;
+  serveRequest(req, out);
 
   //out << resp.getStatus() << " - " << resp.getReason() << endl;
   LOG(INFO) << resp.getStatus() << " - " << resp.getReason() << std::endl;
-}
-
-void ProxyRequestHandler::handleTCPRequest(HTTPServerRequest &req, HTTPServerResponse &resp, bool httpData) {
-  if (httpData) {
-    handleRequest(req, resp);
-  } else {
-
-    LOG(INFO) << "Handling request as HTTPS data" << std::endl;
-  }
-
 }
 
 ProxyRequestHandler::ProxyRequestHandler() {

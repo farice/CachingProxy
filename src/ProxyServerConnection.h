@@ -34,12 +34,14 @@ class Net_API ProxyServerConnection: public TCPServerConnection
 	/// connections.
 {
 public:
+
 	ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory);
 		/// Creates the ProxyServerConnection.
 
 	virtual ~ProxyServerConnection();
 		/// Destroys the ProxyServerConnection.
 
+	void relayData(HTTPServerSession& session, std::string host);
 	void run();
 		/// Handles all HTTP requests coming in.
 
