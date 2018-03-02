@@ -265,7 +265,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
         // TODO: - validation logic
         // add CacheResponseItem call that returns whether item needs to be revalidated to validItem
-        validItem = false;
+        bool validItem = false;
 
         if (!validItem) {
           // TODO: - return updated/same cacheitem depending on result of validate method (in this class)
