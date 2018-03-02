@@ -172,7 +172,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       string path(uri.getPathAndQuery());
       if (path.empty()) path = "/";
 
-      LOG(INFO) << request_id << ": \"" << req.getMethod() << " " << req.getURI() << " " << req.getVersion() << "\" from " << << std::endl;
+      LOG(INFO) << request_id << ": \"" << req.getMethod() << " " << req.getURI() << " " << req.getVersion() << "\" from " << std::endl;
       // Once the request is constructed and before the request is sent
       // check the cache for that request
 
