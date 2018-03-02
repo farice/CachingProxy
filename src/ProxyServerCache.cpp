@@ -28,6 +28,16 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
   return key;
 }
 
+CacheResponse::CacheResponse(Poco::Net::HTTPResponse response, double maxFresh, bool exp, bool noCache):
+  maxFreshness(maxFresh),
+  expired(exp),
+  isNoCache(noCache)
+{
+  Poco::Timestamp ts;
+  timeAdded = ts;
+  ProxyRequestHandler::copyResponseObj(response, responseObj);
+  //startExpire(this->maxFreshness); // start the expiration timer
+}
 
 CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache):
   responseData(respData),
