@@ -21,25 +21,26 @@ private:
   clock_t timeAdded_t;
   Poco::Clock timeAdded; // some kind of timer
   std::string Etag;
+  std::string last_modified;
 
 public:
 
   //CacheResponse(std::string respData, double maxFresh, bool exp);
-  CacheResponse(const CacheResponse& rhs); 
-  
+  CacheResponse(const CacheResponse& rhs);
+
   CacheResponse(std::string respData, double maxFresh, bool exp);
   CacheResponse(std::string respData, double maxFresh, bool exp, std::string Etag);
-  
+
   ~CacheResponse();
-  
+
   void startExpire(double seconds);
 
   std::ostringstream& getResponseData();
 
   std::string getResponseDataStr();
-  
+
   bool isExpired();
-      
+
   void setExpired(bool exp);
 
   double getTimeLeft();
@@ -54,16 +55,15 @@ public:
 class ProxyServerCache : public Poco::LRUCache<std::string, CacheResponse>{
 private:
 
-  
+
 public:
 
   ProxyServerCache();
-  
+
   //ProxyServerCache(size_t size);
 
   ~ProxyServerCache();
-  
-  std::string makeKey(Poco::URI& targetURI);
-  
-};
 
+  std::string makeKey(Poco::URI& targetURI);
+
+};

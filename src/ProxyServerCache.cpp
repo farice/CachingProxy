@@ -58,7 +58,7 @@ CacheResponse::CacheResponse(const CacheResponse& rhs):responseData(rhs.response
 						       expired(rhs.expired),
 						       timeAdded(rhs.timeAdded)
 {
-  
+
 }
 
 CacheResponse::~CacheResponse(){}
@@ -68,7 +68,7 @@ void CacheResponse::startExpire(double seconds){
   clock_t startExpireTime = clock();
   double secondsToExpire = seconds;
   bool stillValid = true;
-  double elapsedTime; 
+  double elapsedTime;
   while (stillValid){ // right now this just waits till its expired, retard
     elapsedTime = (clock() - startExpireTime) / CLOCKS_PER_SEC;
     if (elapsedTime >= secondsToExpire){
@@ -84,6 +84,13 @@ std::string CacheResponse::getResponseDataStr(){
   return this->responseData.str();
 }
 
+std::string CacheResponse::getLastModified(){
+  return this->last_modified;
+}
+
+std::string CacheResponse::getEtag(){
+  return this->Etag;
+}
 
 std::ostringstream& CacheResponse::getResponseData(){
   return this->responseData;
@@ -92,7 +99,7 @@ std::ostringstream& CacheResponse::getResponseData(){
 bool CacheResponse::isExpired(){
   return this->expired;
 }
-      
+
 void CacheResponse::setExpired(bool exp){
   this->expired = exp;
 }
@@ -108,5 +115,3 @@ void CacheResponse::setMaxFreshness(double newFreshness){
 double CacheResponse::getMaxFreshness(){
   return this->maxFreshness;
 }
-
-
