@@ -352,7 +352,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 }
 
 void ProxyRequestHandler::updateCacheItem(Poco::SharedPtr<CacheResponse> item) {
-  string etag = item.getEtag();
+  string etag = (*item).getEtag();
 }
 
 

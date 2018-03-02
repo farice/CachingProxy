@@ -32,9 +32,10 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
 CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp):
   responseData(respData),
   maxFreshness(maxFresh),
-  expired(exp),
-  timeAdded(new Poco::Timestamp)
+  expired(exp)
 {
+  Poco::Timestamp ts;
+  timeAdded = ts;
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
@@ -43,9 +44,10 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp,
   responseData(respData),
   maxFreshness(maxFresh),
   expired(exp),
-  timeAdded(new Poco::Timestamp),
   Etag(Etag)
 {
+  Poco::Timestamp ts;
+  timeAdded = ts;
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
