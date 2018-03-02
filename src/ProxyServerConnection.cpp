@@ -24,9 +24,10 @@
 #include <memory>
 #include <iostream>
 #include <Poco/Thread.h>
+#include <Poco/Mutex.h>
 
 namespace Poco {
-  namespace Net {
+namespace Net {
 
     class DestinationRelay:public Poco::Runnable {
     public:
@@ -82,13 +83,16 @@ namespace Poco {
       std::string host;
     };
 
-    ProxyServerConnection::ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory):
-      TCPServerConnection(socket),
-      _pParams(pParams),
-      _pFactory(pFactory),
-      _stopped(false)
-    {
-      poco_check_ptr (pFactory);
+
+int ProxyServerConnection::request_id = 0;
+
+ProxyServerConnection::ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory):
+	TCPServerConnection(socket),
+	_pParams(pParams),
+	_pFactory(pFactory),
+	_stopped(false)
+{
+	poco_check_ptr (pFactory);
 
       _pFactory->serverStopped += Poco::delegate(this, &ProxyServerConnection::onServerStopped);
     }
@@ -104,17 +108,18 @@ namespace Poco {
 	{
 	  poco_unexpected();
 	}
-    }
+}
 
-    void ProxyServerConnection::run()
-    {
-      std::string server = _pParams->getSoftwareVersion();
-      HTTPServerSession session(socket(), _pParams);
-      int count = 0;
-      // Each thread has an HTTPServerSession obj and hence is either transmitting HTTP or HTTPS (post-connect) data
-      bool connect = false;
-      //StreamSocket destinationServer = StreamSocket();
-      while (!_stopped && session.hasMoreRequests())
+void ProxyServerConnection::run()
+{
+
+	std::string server = _pParams->getSoftwareVersion();
+	HTTPServerSession session(socket(), _pParams);
+	int count = 0;
+	// Each thread has an HTTPServerSession obj and hence is either transmitting HTTP or HTTPS (post-connect) data
+	bool connect = false;
+	//StreamSocket destinationServer = StreamSocket();
+	while (!_stopped && session.hasMoreRequests())
 	{
 	  try
 	    {
@@ -124,69 +129,100 @@ namespace Poco {
 	      if (!_stopped)
 		{
 
-		  count++;
-		  LOG(TRACE) << "Request count=" <<  count << "from host=" << session.clientAddress().toString() << std::endl;
+			LOG(TRACE) << "Grabbing lock. from host=" << session.clientAddress().toString() << std::endl;
+			Poco::FastMutex::ScopedLock lock(_mutex);
+			LOG(TRACE) << "Grabbed lock. from host=" << session.clientAddress().toString() << std::endl;
 
-		  //LOG(TRACE) << "Creating response obj..." << std::endl;
-		  HTTPServerResponseImpl response(session);
-
-		  // MARK: - Past this point we are under the assumption that this is an uncencrypted HTTP Request
-		  //LOG(TRACE) << "Creating request obj..." << std::endl;
-		  HTTPServerRequestImpl request(response, session, _pParams);
-
-		  LOG(TRACE) << "Sucessfully parsed request." << std::endl;
-
-		  Poco::Timestamp now;
-		  response.setDate(now);
-		  response.setVersion(request.getVersion());
-
-		  response.setKeepAlive(_pParams->getKeepAlive() && request.getKeepAlive() && session.canKeepAlive());
-		  if (!server.empty())
-		    response.set("Server", server);
-		  try
-		    {
-		      std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
-		      if (pHandler.get())
+			if (!_stopped)
 			{
-			  if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
-			    response.sendContinue();
+				HTTPServerResponseImpl response(session);
 
-			  // This is an HTTP request so set httpData = true
-			  if (request.getMethod() != "CONNECT") {
-			    pHandler->handleRequest(request, response);
-			  } else {
-			    LOG(TRACE) << "Potential CONNECT request for this session." << std::endl;
-			    connect = true;
+				// Increment unique request id for each new request created
+				HTTPServerRequestImpl request(response, session, _pParams);
+				string host(request.getHost());
+				request.add("ip_addr", session.clientAddress().toString());
 
-			    StreamSocket destinationServer = StreamSocket();
-			    std::string host(request.getHost());
-			    SocketAddress addr = SocketAddress(host);
-			    destinationServer.connect(addr);
+				_requestIdMutex.lock();
+				request.add("unique_id", std::to_string(request_id));
+				request_id++;
+				_requestIdMutex.unlock();
 
-			    unsigned char okMessage[] = "200 OK";
-			    session.socket().sendBytes(okMessage, 7);
+				LOG(TRACE) << "Sucessfully parsed request." << std::endl;
+				count++;
+				LOG(TRACE) << "Request count=" <<  count << "from host=" << host << std::endl;
 
-			    destinationServer.setBlocking(false);
-			    session.socket().setBlocking(false);
-			    LOG(TRACE) << "Handling request as HTTPS data. host=" << host << std::endl;
+				Poco::Timestamp now;
+				response.setDate(now);
+				response.setVersion(request.getVersion());
 
-			    Poco::Thread destThread;
+				response.setKeepAlive(_pParams->getKeepAlive() && request.getKeepAlive() && session.canKeepAlive());
+				if (!server.empty())
+					response.set("Server", server);
+				try
+				{
+					std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
+					if (pHandler.get())
+					{
+					  if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
+							response.sendContinue();
 
-			    Poco::Net::DestinationRelay dRelay(session, destinationServer, host);
-			    destThread.start(dRelay);
-			    relayClientData(session, destinationServer, host);
-			    LOG(TRACE) << "Waiting for dest relay thread to exit..." << std::endl;
-			    destThread.join();
-			    LOG(TRACE) << "Dest relay thread exited" << std::endl;
-			    continue;
-			  }
+						if (request.getMethod() != "CONNECT") {
+							// HTTP so pass to our ProxyRequestHandler (controls GET, POST, and cache logic)
+							pHandler->handleRequest(request, response);
+						} else {
+							LOG(TRACE) << "Potential CONNECT request for this session." << std::endl;
+							connect = true;
 
-			  //LOG(TRACE) << "responseStatus=" << response.getStatus() << std::endl;
+							StreamSocket destinationServer = StreamSocket();
+							SocketAddress addr = SocketAddress(host);
+							destinationServer.connect(addr);
 
-			  //LOG(TRACE) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
-			  //<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
-			  session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
+							unsigned char okMessage[] = "200 OK";
+							session.socket().sendBytes(okMessage, 7);
 
+							destinationServer.setBlocking(false);
+							session.socket().setBlocking(false);
+							LOG(TRACE) << "Handling request as HTTPS data. host=" << host << std::endl;
+
+							Poco::Thread destThread;
+
+							Poco::Net::DestinationRelay dRelay(session, destinationServer, host);
+							destThread.start(dRelay);
+							relayClientData(session, destinationServer, host);
+							LOG(TRACE) << "Waiting for dest relay thread to exit..." << std::endl;
+ 							destThread.join();
+							LOG(TRACE) << "Dest relay thread exited" << std::endl;
+
+							LOG(INFO) << request.get("unique_id") << ": " << "Tunnel closed" << std::endl;
+							continue;
+						}
+
+						//LOG(TRACE) << "responseStatus=" << response.getStatus() << std::endl;
+
+						//LOG(TRACE) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
+						//<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
+						session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
+
+					}
+					else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
+				}
+				catch (Poco::Exception&)
+				{
+					//LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
+
+					if (!response.sent())
+					{
+						try
+						{
+							sendErrorResponse(session, HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
+						}
+						catch (...)
+						{
+						}
+					}
+
+					throw;
+				}
 			}
 		      else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
 		    }
