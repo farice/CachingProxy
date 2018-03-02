@@ -41,6 +41,8 @@ public:
   // returns nullptr if the item is not valid or not present
   // we'll need to differentiate between not present and needing re-validation, etc.
 
+  bool isCacheableResp(HTTPResponse& resp);
+  
 private:
   ProxyRequestHandler(const ProxyRequestHandler&);
   ProxyRequestHandler(const HTTPRequestHandler&);

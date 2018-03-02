@@ -133,11 +133,32 @@ std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheCo
     }
     ++it;
   }
+  LOG(TRACE) << "Cache-control headers" << endl;
   for (int i = 0; i < headers.size(); i++){
     cout << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
   }
   return headers;
 }
+
+
+// Not cacheable if has directives: no-store, private
+// no-cache: may implement this directive, may not, functionality is met but just
+// forwarding the response to the client in this case
+
+// must-revalidate makes you re-validate a cached response if it is stale
+// no-cache makes you re-validate a cached response everytime
+bool ProxyRequestHandler::isCacheableResp(HTTPResponse& resp){
+  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp\
+												);
+  for (int i = 0; i < cacheControlHeaders.size(); i++){
+    if ((cacheControlHeaders[i].second == "no-store") ||
+	(cacheControlHeaders[i].second == "private")){
+      return false;
+    }
+  }
+  return true;
+}
+
 
 std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getHeaders(HTTPResponse& resp){
   std::string name;
@@ -272,10 +293,15 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
         // add if 200-OK resp to GET request
 
+	if (isCacheableResp(proxy_resp)){
+	  // filter out 'no-store' and 'private' responses
+	  LOG(TRACE) << "The response is cachable " << endl;
+
         // determine expiration
 
         // testing basic function for now
-        this->staticCache.add(key, CacheResponse(oss.str(), 10, false));
+	  this->staticCache.add(key, CacheResponse(oss.str(), 10, false));
+	}
       }
 
       LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason()
