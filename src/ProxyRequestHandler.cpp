@@ -161,7 +161,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   // Only using HTTP requests (no danger of HTTPS) //
   /************************************************/
   LOG(TRACE) << "HTTP request" << std::endl;
-
+  
   try
     {
       // prepare session
@@ -175,27 +175,15 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       // check the cache for that request
 
       //string key = this->requestCache->makeKey(uri); // construct key from uri
-      string key = this->staticCache.makeKey(uri); // construct key from uri
+      //string key = this->staticCache.makeKey(uri); // construct key from uri
 
       //Poco::SharedPtr<CacheResponse> checkResponse = this->requestCache->get(key);
-      Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
+      //Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
       // If it's in the cache, use the stored istream or data to fulfill the response
-
-      if (!checkResponse.isNull()){ // if the response is cached
-	out << (*checkResponse).getResponseData().str();
-	LOG(DEBUG) << "{{{{++++ Responded with cached data brother ++++}}}}"
-		   << endl;
-	return;
-      }
-      else{
-	LOG(DEBUG) << "The request is not in the cache" << endl;
-      }
 
   // Once the request is constructed and before the request is sent
   // check the cache for that request
 
-
-  string key = makeKey(uri); // construct key from uri
 
   /*
   this->requestCache.add(test, ExpRespStream("testResponseValue", 10000));
@@ -205,7 +193,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   */
 
 
-  // If it's in the cache, use the stored istream or data to fulfill the response
+  // Create the session after checking the original response method
+  // We don't wanna make a session if we don't have to
+      
   // send request
   LOG(TRACE) << "Creating proxy session to " << uri.getHost() << std::endl;
   HTTPClientSession session(uri.getHost(), uri.getPort());
@@ -237,6 +227,23 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     LOG(TRACE) << endl;
 
   } else { // GET / other (per requirements this is the only other HTTP request we are concerned with)
+    if (proxy_req.getMethod() == "GET"){
+      string key = this->staticCache.makeKey(uri); // construct key from uri
+    
+      Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
+
+      if (!checkResponse.isNull()){ // if the response is cached
+	std::ostream& out = resp.send();
+	out << (*checkResponse).getResponseData().str();
+	LOG(DEBUG) << "{{{{++++ Responded with cached data brother ++++}}}}"
+		   << endl;
+	
+	return;
+      }
+      else{
+	LOG(DEBUG) << "The request is not in the cache" << endl;
+      }
+    }
 
     proxy_req.setContentType("text/html");
 
@@ -253,15 +260,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   if (proxy_resp.has("Cache-Control")) {
     LOG(TRACE) << "Cache-Control=" << proxy_resp.get("Cache-control") << endl;
   }
-  //string respString(istreambuf_iterator<char>(is), {}); // works but is slow
-  //string respString = istreamToStr(is); // works but unsure of errors
-
-  this->requestCache->add("wombo","womboing");
-  this->requestCache->add("wombology","it's first grade");
-  poco_assert(this->requestCache->size() == 2);
-
-  Poco::SharedPtr<string> element = this->requestCache->get("wombo");
-  poco_assert(*element == "womboing");
 
   /*
   string responseVal;
@@ -295,6 +293,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   // Copy HTTP stream to app server response stream
   Poco::StreamCopier::copyStream(is, out);
 
+
+  
   }
   catch (Poco::Exception &ex)
   {
@@ -314,10 +314,12 @@ ProxyRequestHandler::ProxyRequestHandler():requestCache(nullptr) {
 
 }
 
-ProxyRequestHandler::ProxyRequestHandler(Poco::LRUCache<std::string, std::string>* cache):requestCache(cache){
+///*
+ProxyRequestHandler::ProxyRequestHandler(ProxyServerCache* cache):requestCache(cache){
   //LOG(TRACE) << "------ Created Proxy Request Handler with cache ------" << endl;
 
 }
+//*/
 
 ProxyRequestHandler::~ProxyRequestHandler() {
 

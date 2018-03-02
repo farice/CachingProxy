@@ -10,7 +10,7 @@ namespace Poco {
 ProxyRequestHandlerFactory::ProxyRequestHandlerFactory()
 {
   //LOG(TRACE) << "************* Created ProxyRequestHandlerFactory ************* " << endl;
-this->factoryCache = new Poco::LRUCache<std::string, std::string>();
+  this->factoryCache = new ProxyServerCache();
  //LOG(TRACE) << "!!!!!!!!!!!!!!!!!!!!!! Shared Proxy Cache created !!!!!!!!!!!!!!!!!!!!!!!!" << endl;
 }
 
@@ -25,7 +25,7 @@ ProxyRequestHandlerFactory::~ProxyRequestHandlerFactory()
 ProxyRequestHandler* ProxyRequestHandlerFactory::createRequestHandler(const HTTPServerRequest &)
   {
     LOG(TRACE) << "Create request handler" << endl;
-    return new ProxyRequestHandler(this->factoryCache);
+    return new ProxyRequestHandler();//(this->factoryCache);
   }
 
 
