@@ -24,7 +24,7 @@ class ProxyRequestHandler : public HTTPRequestHandler
 public:
   using HTTPRequestHandler::HTTPRequestHandler;
 
-  ProxyRequestHandler(ProxyServerCache* cache);
+  //ProxyRequestHandler(ProxyServerCache* cache); // now using static member
 
   ProxyRequestHandler();
 
@@ -49,9 +49,10 @@ private:
   // Cache for the request handler (may have to move up hierarchy to
   // have caching span multiple request or even connections)
 
-  ProxyServerCache * requestCache;
+  //ProxyServerCache * requestCache; // defunct, no longer passing in from factory
 
   static ProxyServerCache staticCache;
+
   static int count;
 };
 
