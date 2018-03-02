@@ -172,10 +172,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       if (path.empty()) path = "/";
 
       string key = this->staticCache.makeKey(uri); // construct cache key from uri
-      
-      // Create the session after checking the original response method
-      // We don't wanna make a session if we don't have to
-      
+            
       // log send request
       LOG(TRACE) << "Creating proxy session to " << uri.getHost() << std::endl;
   

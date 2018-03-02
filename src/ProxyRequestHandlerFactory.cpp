@@ -24,16 +24,6 @@ namespace Poco {
       //LOG(TRACE) << "Create request handler" << endl;
       return new ProxyRequestHandler();
     }
-
-
-    // defunct
-    /*
-    ProxyRequestHandler* ProxyRequestHandlerFactory::createRequestHandlerWithCache(const HTTPServerRequest &){
-      //LOG(TRACE) << "Create request handler with cache" << endl;
-      return new ProxyRequestHandler(this->factoryCache);
-    }
-    */
-
   }
 }
 

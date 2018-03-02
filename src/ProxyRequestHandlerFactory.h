@@ -16,7 +16,6 @@ namespace Poco {
       ProxyRequestHandlerFactory();
       ~ProxyRequestHandlerFactory();
       virtual ProxyRequestHandler* createRequestHandler(const HTTPServerRequest &);
-      //virtual ProxyRequestHandler* createRequestHandlerWithCache(const HTTPServerRequest &);
 
       Poco::BasicEvent<const bool> serverStopped;
 
