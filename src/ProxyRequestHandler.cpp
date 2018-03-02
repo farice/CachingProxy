@@ -150,7 +150,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     LOG(DEBUG) << "Cache-Control=" << req.get("Cache-control") << endl;
   }
   */
-  
+
   try
   {
   // prepare session
@@ -185,25 +185,23 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   // POST only
   if(proxy_req.getMethod() == "POST") {
     LOG(DEBUG) << "POST request to=" << uri.getHost() << std::endl;
-    proxy_req.setContentType("application/x-www-form-urlencoded");
+    proxy_req.setContentType("application/x-www-form-urlencoded\r\n");
+    proxy_req.setKeepAlive(true);
     proxy_req.setContentLength(req.getContentLength());
-    Poco::Net::NameValueCollection cookies;
+
 
     LOG(DEBUG) << "Post content length=" << proxy_req.getContentLength() << std::endl;
+
+    Poco::Net::NameValueCollection cookies;
     req.getCookies(cookies);
     proxy_req.setCookies(cookies);
-    //LOG(DEBUG) << "csrf_token=" << req.get("csrf_token");
 
     string body("csrfmiddlewaretoken=qtHiu8G3zxkIMWG3tSe2paIvrpNYxSxmTCB1AaMZoCsmF8t8mLsN3rGq2Po5Hf8l&username=farice&password=farice23&next=");
+    //LOG(DEBUG) << "Writing body to POST stream=" << body << endl;
     std::ostream& opost = session.sendRequest(proxy_req);
-    session.sendRequest(proxy_req) << body;
     std::istream &ipost = req.stream();
-
-    LOG(DEBUG) << "Writing body to POST stream=" << body << endl;
-
-    //opost << body;
     Poco::StreamCopier::copyStream(ipost, opost);
-
+    
     //proxy_req.write(std::cout);
 
   } else { // GET / other (per requirements this is the only other HTTP request we are concerned with)

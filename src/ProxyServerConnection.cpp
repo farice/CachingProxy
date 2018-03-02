@@ -97,7 +97,7 @@ void ProxyServerConnection::run()
 					std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
 					if (pHandler.get())
 					{
-					  if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
+					  if (request.getExpectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
 							response.sendContinue();
 
 						// This is an HTTP request so set httpData = true
