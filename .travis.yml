@@ -1,0 +1,19 @@
+sudo: required
+
+language: cpp
+
+services:
+  - docker
+
+env:
+  DOCKER_COMPOSE_VERSION: 1.20.0
+
+before_install:
+  - sudo apt-get update
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+  - docker-compose --version
+  - docker-compose pull
+  - docker-compose build
+  - docker-compose up
+  - docker ps
