@@ -142,7 +142,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
       if (!checkResponse.isNull()){ // if the response is cached 
 	out << (*checkResponse).getResponseData().str();
-	LOG(DEBUG) << "{{{{++++ Responded with cached data brother #420BlazeItFag1v1MeOnRust360NoScopeOnly ++++}}}}"
+	LOG(DEBUG) << "{{{{++++ Responded with cached data brother ++++}}}}"
 		   << endl;
 	return;
       }

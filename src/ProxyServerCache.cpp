@@ -24,7 +24,7 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
   std::string key(uri.getHost());
   key.append(std::to_string(uri.getPort()));
   key.append(uri.getPathAndQuery());
-  //LOG(DEBUG) << "Constructed key = " << key << std::endl;
+  LOG(DEBUG) << "Constructed key = " << key << std::endl;
   return key;
 }
 
