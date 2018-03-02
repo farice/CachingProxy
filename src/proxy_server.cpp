@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <cstdlib>
 
-#include<Poco/Net/HTTPServerConnectionFactory.h>
+#include <Poco/Net/HTTPServerConnectionFactory.h>
 #include <Poco/Net/SSLManager.h>
 #include <Poco/Net/SSLException.h>
 #include <Poco/Net/HTTPClientSession.h>
@@ -31,36 +31,36 @@ using namespace Poco::Util;
 using namespace std;
 
 class ProxyHandlerFactory: public TCPServerConnectionFactory
-	/// This implementation of a TCPServerConnectionFactory
-	/// is used by HTTPServer to create HTTPServerConnection objects.
+/// This implementation of a TCPServerConnectionFactory
+/// is used by HTTPServer to create HTTPServerConnection objects.
 {
 public:
-	ProxyHandlerFactory(HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory) :
-	_pParams(pParams),
-	_pFactory(pFactory) {
+  ProxyHandlerFactory(HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory) :
+    _pParams(pParams),
+    _pFactory(pFactory) {
 
     poco_check_ptr (pFactory);
     LOG(TRACE) << "keepAlive=" << pParams->getKeepAlive();
 
   };
-		/// Creates the HTTPServerConnectionFactory.
+  /// Creates the HTTPServerConnectionFactory.
 
-	~ProxyHandlerFactory() {
+  ~ProxyHandlerFactory() {
 
   };
-		/// Destroys the HTTPServerConnectionFactory.
+  /// Destroys the HTTPServerConnectionFactory.
 
-    virtual TCPServerConnection* createConnection(const StreamSocket& socket)
+  virtual TCPServerConnection* createConnection(const StreamSocket& socket)
   {
     LOG(TRACE) << "create connection" << endl;
   	return new ProxyServerConnection(socket, _pParams, _pFactory);
   }
-		/// Creates an instance of HTTPServerConnection
-		/// using the given StreamSocket.
+  /// Creates an instance of HTTPServerConnection
+  /// using the given StreamSocket.
 
 private:
-	HTTPServerParams::Ptr          _pParams;
-	ProxyRequestHandlerFactory::Ptr _pFactory;
+  HTTPServerParams::Ptr          _pParams;
+  ProxyRequestHandlerFactory::Ptr _pFactory;
 };
 
 class ProxyServerApp : public ServerApplication

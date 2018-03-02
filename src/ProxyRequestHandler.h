@@ -1,12 +1,10 @@
-
-#include<Poco/Net/HTTPServerConnectionFactory.h>
+#include <Poco/Net/HTTPServerConnectionFactory.h>
 #include <Poco/Net/SSLManager.h>
 #include <Poco/Net/SSLException.h>
 #include <Poco/Net/HTTPClientSession.h>
 #include <Poco/Net/AcceptCertificateHandler.h>
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/StreamCopier.h>
-#include <Poco/URI.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPRequestHandler.h>
@@ -16,16 +14,9 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/Exception.h>
-
-#include <Poco/UniqueExpireCache.h>
-#include <Poco/LRUCache.h>
-#include <Poco/ExpirationDecorator.h>
-
+#include "ProxyServerCache.h"
 
 using namespace Poco::Net;
-
-// Expiration wrapper for istream responses stored in the cache
-typedef Poco::ExpirationDecorator<std::string> ExpRespStream;
 
 
 class ProxyRequestHandler : public HTTPRequestHandler
@@ -33,11 +24,23 @@ class ProxyRequestHandler : public HTTPRequestHandler
 public:
   using HTTPRequestHandler::HTTPRequestHandler;
 
-  ProxyRequestHandler(Poco::LRUCache<std::string, std::string>* cache);
+  ProxyRequestHandler(ProxyServerCache* cache);
+
   ProxyRequestHandler();
+
   ~ProxyRequestHandler();
 
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp);
+
+  std::vector<std::pair<std::string,std::string> > getHeaders(HTTPResponse& resp);
+
+  std::vector<std::pair<std::string,std::string> > getCacheControlHeaders(HTTPResponse& resp);
+
+  // trying to get an item from the cache and check its time to see if valid
+  Poco::SharedPtr<CacheResponse> checkAndGetResponse(std::string key);
+  // returns nullptr if the item is not valid or not present 
+  // we'll need to differentiate between not present and needing re-validation, etc.
+  
 private:
   ProxyRequestHandler(const ProxyRequestHandler&);
   ProxyRequestHandler(const HTTPRequestHandler&);
@@ -46,8 +49,10 @@ private:
   // Cache for the request handler (may have to move up hierarchy to
   // have caching span multiple request or even connections)
 
-  //Poco::UniqueExpireCache<std::string, ExpRespStream> requestCache;
-  Poco::LRUCache<std::string, std::string>* requestCache;
-  
+  ProxyServerCache * requestCache;
+
+  static ProxyServerCache staticCache;
   static int count;
 };
+
+

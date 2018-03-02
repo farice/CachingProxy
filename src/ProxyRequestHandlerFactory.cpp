@@ -5,7 +5,7 @@ using namespace Poco::Util;
 using namespace std;
 
 namespace Poco {
-namespace Net {
+  namespace Net {
 
 ProxyRequestHandlerFactory::ProxyRequestHandlerFactory()
 {
@@ -34,4 +34,4 @@ ProxyRequestHandler* ProxyRequestHandlerFactory::createRequestHandlerWithCache(c
 return new ProxyRequestHandler(this->factoryCache);
 }
 
-}}
+  }}

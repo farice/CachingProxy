@@ -3,12 +3,12 @@
 
 #include <iostream>
 #include <cstring>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <cstdlib>
 #include <sstream>
+#include <utility>
 
 #include <Poco/Net/HTTPServerConnectionFactory.h>
 #include <Poco/Net/SSLManager.h>
@@ -37,28 +37,9 @@ using namespace Poco::Util;
 using namespace std;
 
 
-// Key will be a combination of fields within the URI
-string makeKey(Poco::URI& uri){
-  string key(uri.getHost());
-  key.append(to_string(uri.getPort()));
-  key.append(uri.getPathAndQuery());
-  LOG(TRACE) << "Constructed key = " << key << endl;
-  return key;
-}
-
-
-string istreamToStr(istream& is){
-  string str;
-  char buff[4096];
-  while (is.read(buff, sizeof(buff))){
-    str.append(buff, sizeof(buff));
-  }
-  str.append(buff, is.gcount());
-  return str;
-}
-
 // Note we are only concerned here with the responses to get requests
-pair<int,int> getCacheControl(HTTPServerResponse& resp){
+pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is trash
+
   int freshness;
   if (resp.has("Cache-Control")) {
 
@@ -130,13 +111,49 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){
   pair<int, int> ret(-10,-10);
   return ret;
 }
+
   /*
     Expiration time is determined by more than the cache-control header
     - may be easier to just return a struct with all the information the cache needs to
     - consume
+    */
+    
+std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheControlHeaders(HTTPResponse& resp){
+  std::string name;
+  std::string value;
+  std::vector<std::pair<std::string,std::string> > headers;
+  NameValueCollection::ConstIterator it = resp.begin();
+  while (it != resp.end()){ // just cache-control part for now
+    name = it->first;
+    if (name == "Cache-Control"){
+      value = it->second;
+      headers.push_back(std::make_pair(name, value));
+    }
+    ++it;
+  }
+  for (int i = 0; i < headers.size(); i++){
+    cout << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
+  }
+  return headers;
+}
 
+std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getHeaders(HTTPResponse& resp){
+  std::string name;
+  std::string value;
+  std::vector<std::pair<std::string,std::string> > headers;
+  NameValueCollection::ConstIterator it = resp.begin();
+  while (it != resp.end()){
+    name = it->first;
+    value = it->second;
+    headers.push_back(std::make_pair(name, value));
+    ++it;
+  }
+  for (int i = 0; i < headers.size(); i++){
+    cout << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
+  }
+  return headers;
+}
 
-  */
 
 void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
 {
@@ -146,13 +163,33 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << "HTTP request" << std::endl;
 
   try
-  {
-  // prepare session
-  Poco::URI uri(req.getURI());
+    {
+      // prepare session
+      Poco::URI uri(req.getURI());
 
-  // prepare path
-  string path(uri.getPathAndQuery());
-  if (path.empty()) path = "/";
+      // prepare path
+      string path(uri.getPathAndQuery());
+      if (path.empty()) path = "/";
+
+      // Once the request is constructed and before the request is sent
+      // check the cache for that request
+
+      //string key = this->requestCache->makeKey(uri); // construct key from uri
+      string key = this->staticCache.makeKey(uri); // construct key from uri
+
+      //Poco::SharedPtr<CacheResponse> checkResponse = this->requestCache->get(key);
+      Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
+      // If it's in the cache, use the stored istream or data to fulfill the response
+
+      if (!checkResponse.isNull()){ // if the response is cached
+	out << (*checkResponse).getResponseData().str();
+	LOG(DEBUG) << "{{{{++++ Responded with cached data brother ++++}}}}"
+		   << endl;
+	return;
+      }
+      else{
+	LOG(DEBUG) << "The request is not in the cache" << endl;
+      }
 
   // Once the request is constructed and before the request is sent
   // check the cache for that request
@@ -265,8 +302,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     << "method=" << req.getMethod() << std::endl
     << ex.what() << ": " << ex.message() << endl;
 
-    resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
-  }
+      resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
+    }
 
 
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
@@ -285,3 +322,5 @@ ProxyRequestHandler::ProxyRequestHandler(Poco::LRUCache<std::string, std::string
 ProxyRequestHandler::~ProxyRequestHandler() {
 
 }
+
+ProxyServerCache ProxyRequestHandler::staticCache;
