@@ -116,7 +116,8 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is tra
     Expiration time is determined by more than the cache-control header
     - may be easier to just return a struct with all the information the cache needs to
     - consume
-
+    */
+    
 std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheControlHeaders(HTTPResponse& resp){
   std::string name;
   std::string value;
