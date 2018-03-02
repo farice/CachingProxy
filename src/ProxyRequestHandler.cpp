@@ -69,7 +69,7 @@ void ProxyRequestHandler::remoteReq(Poco::URI& uri, std::string path, HTTPServer
       // filter out 'no-store' and 'private' responses
       LOG(TRACE) << "The response is cachable " << endl;
 
-      this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
+      this->staticCache.add(key, CacheResponse(proxy_resp, oss.str(), req.get("unique_id")));
       //LOG(INFO) << req.get("unique_id") << ": NOTE ETag: " << etag << std::endl;
     }
   }
@@ -166,11 +166,11 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         if (!checkResponse.isNull()){
 
           // TODO -
-	        bool validItem = (*checkResponse).isValidResponse();
+	        bool validItem = (*checkResponse).isValidResponse(req.get("unique_id"));
 
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
-            LOG(INFO) << req.get("unique_id") << ": " << "in cache, requires validation" << endl;
+
             bool itemInvalid = updateCacheItem(uri, path, req, resp, checkResponse);
             if (itemInvalid) {
               // return because a remote request was required (item was invalid after validation)
@@ -179,8 +179,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
             // otherwise, continue and retrieve from cache...
 
-          } else {
-            LOG(INFO) << req.get("unique_id") << ": " << "in cache, valid" << endl;
           }
 
           // writes to resp
@@ -242,11 +240,10 @@ bool ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
     HTTPResponse ping_resp;
     session.receiveResponse(ping_resp);
 
-    LOG(DEBUG) << "status code from ping=" << ping_resp.getStatus() << std::endl;
+    LOG(INFO) << req.get("unique_id") << ": " << "NOTE sent If-None-Match request, receive status " << ping_resp.getStatus() << std::endl;
 
     if (ping_resp.getStatus() == 304) {
-      LOG(DEBUG) << "potentially stale data remains valid" << std::endl;
-      LOG(INFO) << req.get("unique_id") << ": " << "in cache, valid" << endl;
+      LOG(INFO) << req.get("unique_id") << ": " <<  "NOTE cached response validated" << std::endl;
       // TODO - Update max age?
 
       return false;
