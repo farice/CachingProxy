@@ -68,11 +68,11 @@ class ProxyServerApp : public ServerApplication
 protected:
   int main(const vector<string> &)
   {
-    //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
+    //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(12345), new HTTPServerParams);
 
 		// minCapacity, maxCapacity, idle timeOut, initial stack size
 		Poco::ThreadPool tp(128, 2048, 60, 0);
-    TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), tp, ServerSocket(8080), new HTTPServerParams);
+    TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), tp, ServerSocket(12345), new HTTPServerParams);
 
     s.start();
     LOG(DEBUG) << endl << "Server started" << endl;
