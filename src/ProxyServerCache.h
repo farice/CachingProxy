@@ -31,6 +31,9 @@ public:
   CacheResponse(std::string respData, double maxFresh, bool exp);
   CacheResponse(std::string respData, double maxFresh, bool exp, std::string Etag);
 
+  std::string getEtag();
+  std::string getLastModified();
+  
   ~CacheResponse();
 
   void startExpire(double seconds);
