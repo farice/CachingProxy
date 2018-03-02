@@ -208,15 +208,14 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   poco_assert(this->requestCache->size() == 1);
 
   Poco::SharedPtr<CacheResponse> element = this->requestCache->get("wombology");
-  poco_assert((*element).getResponseData() == "Hello");
+  poco_assert((*element).getResponseData().str() == "Hello");
   
   
   string responseVal;
   //Poco::StreamCopier::copyToString(is, responseVal);
 
   // store the shit then serve it 
-  
-  
+ 
   ostringstream oss;
   oss << is.rdbuf();
   responseVal = oss.str();
@@ -235,7 +234,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   out << oss.str();  //responseVal.data();
   
   
-  LOG(DEBUG) << "The responseVal string  = " << toStore.str() << endl;
+  //LOG(DEBUG) << "The responseVal string  = " << toStore.str() << endl;
    
   LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
