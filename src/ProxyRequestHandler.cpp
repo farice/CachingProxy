@@ -205,8 +205,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 	std::ostream& opost = session.sendRequest(proxy_req);
 
 	HTMLForm htmlBody(req, req.stream());
-  /*
+
 	htmlBody.write(opost);
+  /*
 	LOG(TRACE) << "POST body=";
 	htmlBody.write(LOG(TRACE));
 	LOG(TRACE) << endl;
