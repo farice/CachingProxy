@@ -10,8 +10,7 @@ env:
 
 before_install:
   - sudo apt-get update
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
+  - ls -a
   - docker-compose --version
   - docker-compose pull
   - docker-compose build
