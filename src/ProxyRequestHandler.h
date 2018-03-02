@@ -38,9 +38,9 @@ public:
 
   // trying to get an item from the cache and check its time to see if valid
   Poco::SharedPtr<CacheResponse> checkAndGetResponse(std::string key);
-  // returns nullptr if the item is not valid or not present 
+  // returns nullptr if the item is not valid or not present
   // we'll need to differentiate between not present and needing re-validation, etc.
-  
+
 private:
   ProxyRequestHandler(const ProxyRequestHandler&);
   ProxyRequestHandler(const HTTPRequestHandler&);
@@ -53,6 +53,5 @@ private:
 
   static ProxyServerCache staticCache;
   static int count;
+  static int request_id;
 };
-
-
