@@ -172,28 +172,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       string path(uri.getPathAndQuery());
       if (path.empty()) path = "/";
 
-      LOG(INFO) << request_id << ": \"" << req.getMethod() << " " << req.getURI() << " " << req.getVersion() << "\" from " << std::endl;
-      // Once the request is constructed and before the request is sent
-      // check the cache for that request
-
-      //string key = this->requestCache->makeKey(uri); // construct key from uri
-      //string key = this->staticCache.makeKey(uri); // construct key from uri
-
-      //Poco::SharedPtr<CacheResponse> checkResponse = this->requestCache->get(key);
-      //Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
-      // If it's in the cache, use the stored istream or data to fulfill the response
-
-  // Once the request is constructed and before the request is sent
-  // check the cache for that request
-
-
-  /*
-  this->requestCache.add(test, ExpRespStream("testResponseValue", 10000));
-  //this->requestCache.add(uri, ExpRespStream("testResponseValue", 10000));
-
-  poco_assert(this->requestCache.size() == 1);
-  */
-
 
   // Create the session after checking the original response method
   // We don't wanna make a session if we don't have to
@@ -202,6 +180,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << "Creating proxy session to " << uri.getHost() << std::endl;
   HTTPClientSession session(uri.getHost(), uri.getPort());
   HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+
+  string key = this->staticCache.makeKey(uri); // construct key from uri
 
   // POST only
   if(proxy_req.getMethod() == "POST") {
@@ -229,8 +209,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     LOG(TRACE) << endl;
 
   } else { // GET / other (per requirements this is the only other HTTP request we are concerned with)
+
     if (proxy_req.getMethod() == "GET"){
-      string key = this->staticCache.makeKey(uri); // construct key from uri
 
       Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
 
@@ -263,15 +243,12 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     LOG(TRACE) << "Cache-Control=" << proxy_resp.get("Cache-control") << endl;
   }
 
-  /*
-  string responseVal;
   ostringstream oss;
   oss << is.rdbuf();
-  responseVal = oss.str();
+  if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){ // add of 200-OK resp to GET
 
-
-  out << responseVal.data();
-  */
+    this->staticCache.add(key, CacheResponse(oss.str(), 10, false)); // testing basic function for now
+  }
 
   LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
@@ -293,9 +270,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   std::ostream& out = resp.send();
   // Copy HTTP stream to app server response stream
-  Poco::StreamCopier::copyStream(is, out);
-
-
+  //Poco::StreamCopier::copyStream(is, out);
+  out << oss.str();
 
   }
   catch (Poco::Exception &ex)
