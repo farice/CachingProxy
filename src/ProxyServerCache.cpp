@@ -33,8 +33,7 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp):
   responseData(respData),
   maxFreshness(maxFresh),
   expired(exp),
-  timeAdded_t(clock()),
-  timeAdded(Poco::Clock())
+  timeAdded(new Poco::Timestamp)
 {
   //startExpire(this->maxFreshness); // start the expiration timer
 }
@@ -44,8 +43,7 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp,
   responseData(respData),
   maxFreshness(maxFresh),
   expired(exp),
-  timeAdded_t(clock()),
-  timeAdded(Poco::Clock()),
+  timeAdded(new Poco::Timestamp),
   Etag(Etag)
 {
   //startExpire(this->maxFreshness); // start the expiration timer

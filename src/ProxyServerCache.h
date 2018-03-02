@@ -6,6 +6,7 @@
 #include "logging/aixlog.hpp"
 #include <Poco/URI.h>
 #include <Poco/Clock.h>
+#include<Poco/Timestamp.h>
 
 // Reponse object that will be cached with an expiration timer (defuct, not useing ExpireCache)
 typedef Poco::ExpirationDecorator<std::istream> ExpRespStream;
@@ -18,8 +19,7 @@ private:
   double maxFreshness;
   double currentFreshness;
   bool expired;
-  clock_t timeAdded_t;
-  Poco::Clock timeAdded; // some kind of timer
+  Poco::Timestamp timeAdded; // some kind of timer
   std::string Etag;
   std::string last_modified;
 
