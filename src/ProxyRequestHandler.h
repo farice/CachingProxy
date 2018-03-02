@@ -39,6 +39,9 @@ private:
   // have caching span multiple request or even connections)
 
   ProxyServerCache * requestCache;
-  
+
+  static ProxyServerCache staticCache;
   static int count;
 };
+
+
