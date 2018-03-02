@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
   // Initialize logging
   auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
-  auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "/var/log/erss/proxy.log");
+  auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::info, AixLog::Type::all, "/var/log/erss/proxy.log");
   AixLog::Log::init({sink_cout, sink_file});
 
   // run proxy app (Poco ServerApplication)
