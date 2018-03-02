@@ -116,11 +116,11 @@ void ProxyServerConnection::run()
 	//StreamSocket destinationServer = StreamSocket();
 	while (!_stopped && session.hasMoreRequests())
 	{
-		LOG(DEBUG) << "Has more" << std::endl;
 		try
 		{
-			LOG(DEBUG) << "Grabbing lock." << std::endl;
+			LOG(DEBUG) << "Grabbing lock. from host=" << session.clientAddress().toString() << std::endl;
 			Poco::FastMutex::ScopedLock lock(_mutex);
+			LOG(DEBUG) << "Grabbed lock. from host=" << session.clientAddress().toString() << std::endl;
 			if (!_stopped)
 			{
 
@@ -175,14 +175,16 @@ void ProxyServerConnection::run()
 							Poco::Net::DestinationRelay dRelay(session, destinationServer, host);
 							destThread.start(dRelay);
 							relayClientData(session, destinationServer, host);
-							destThread.join();
+							LOG(DEBUG) << "Waiting for dest relay thread to exit..." << std::endl;
+ 							destThread.join();
+							LOG(DEBUG) << "Dest relay thread exited" << std::endl;
 							continue;
 						}
 
-						LOG(DEBUG) << "responseStatus=" << response.getStatus() << std::endl;
+						//LOG(DEBUG) << "responseStatus=" << response.getStatus() << std::endl;
 
-						LOG(DEBUG) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
-						<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
+						//LOG(DEBUG) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
+						//<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
 						session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
 
 					}
