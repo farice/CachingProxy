@@ -351,8 +351,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
-void ProxyRequestHandler::updateCacheItem(CacheResponse& item) {
-  string etag = item.Etag;
+void ProxyRequestHandler::updateCacheItem(Poco::SharedPtr<CacheResponse> item) {
+  string etag = item.getEtag();
 }
 
 

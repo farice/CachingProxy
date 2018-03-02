@@ -30,7 +30,7 @@ public:
 
   ~ProxyRequestHandler();
 
-  void updateCacheItem(CacheResponse& item);
+  void updateCacheItem(Poco::SharedPtr<CacheResponse>  item);
 
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp);
 
