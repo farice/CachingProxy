@@ -353,6 +353,19 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
 void ProxyRequestHandler::updateCacheItem(Poco::SharedPtr<CacheResponse> item) {
   string etag = (*item).getEtag();
+  string last_modified = (*item).getLastModified();
+
+  /*
+  HTTPClientSession session(uri.getHost(), uri.getPort());
+  HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+
+  // send request normally
+  proxy_req.setContentType("text/html");
+  session.sendRequest(proxy_req);
+
+  // get response
+  HTTPResponse proxy_resp;
+  */
 }
 
 
