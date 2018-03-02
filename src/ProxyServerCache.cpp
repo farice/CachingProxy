@@ -30,18 +30,18 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
 
 void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
   // Copy over headers
-  NameValueCollection::ConstIterator i = fromResp.begin();
+  Poco::Net::NameValueCollection::ConstIterator i = fromResp.begin();
   while(i!=fromResp.end()){
       toResp.add(i->first, i->second);
       ++i;
   }
 
   // Copy over cookies from proxy's response to client response
-  std::vector<HTTPCookie> respCookies;
+  std::vector<Poco::Net::HTTPCookie> respCookies;
   fromResp.getCookies(respCookies);
 
   for (int i=0 ; i < respCookies.size(); i++) {
-    HTTPCookie cookie(respCookies[i]);
+    Poco::Net::HTTPCookie cookie(respCookies[i]);
     toResp.addCookie(cookie);
   }
 
@@ -51,7 +51,7 @@ void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::
 
 void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp) {
   // Copy over headers
-  Poco::NameValueCollection::ConstIterator i = fromResp.begin();
+  Poco::Net::NameValueCollection::ConstIterator i = fromResp.begin();
   while(i!=fromResp.end()){
       toResp.add(i->first, i->second);
       ++i;
@@ -77,7 +77,7 @@ CacheResponse::CacheResponse(Poco::Net::HTTPResponse response, double maxFresh, 
 {
   Poco::Timestamp ts;
   timeAdded = ts;
-  copyResponseObj(response, responseObj);
+  ProxyServerCache::copyResponseObj(response, responseObj);
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
