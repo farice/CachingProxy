@@ -213,6 +213,27 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       LOG(TRACE) << endl;
       */
 
+      // get response
+      HTTPResponse proxy_resp;
+      // create istream for session response
+      istream &is = session.receiveResponse(proxy_resp);
+
+      resp.setStatus(proxy_resp.getStatus());
+      resp.setContentType(proxy_resp.getContentType());
+
+      // Copy over cookies from proxy's response to client response
+      std::vector<HTTPCookie> respCookies;
+      proxy_resp.getCookies(respCookies);
+
+      for (int i=0 ; i < respCookies.size(); i++) {
+        HTTPCookie cookie(respCookies[i]);
+        resp.addCookie(cookie);
+      }
+
+      std::ostream& out = resp.send();
+      // Copy HTTP stream to app server response stream
+      Poco::StreamCopier::copyStream(is, out);
+
     }
     else {
       /* GET or other request method */
