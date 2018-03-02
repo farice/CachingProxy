@@ -115,9 +115,9 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is tra
 }
 
 /*
-  Expiration time is determined by more than the cache-control header
-  - may be easier to just return a struct with all the information the cache needs to
-  - consume
+Expiration time is determined by more than the cache-control header
+- may be easier to just return a struct with all the information the cache needs to
+- consume
 */
 
 std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheControlHeaders(HTTPResponse& resp){
@@ -170,123 +170,123 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   << "\" from " << req.get("ip_addr") << " @ " << timestamp_str << std::endl;
 
   try
-    {
-      // prepare uri
-      Poco::URI uri(req.getURI());
+  {
+    // prepare uri
+    Poco::URI uri(req.getURI());
 
-      // prepare path
-      string path(uri.getPathAndQuery());
-      if (path.empty()) path = "/";
+    // prepare path
+    string path(uri.getPathAndQuery());
+    if (path.empty()) path = "/";
 
-      string key = this->staticCache.makeKey(uri); // construct cache key from uri
+    string key = this->staticCache.makeKey(uri); // construct cache key from uri
 
-      // log send request
-      LOG(TRACE) << "Creating proxy session to " << uri.getHost() << std::endl;
+    // log send request
+    LOG(TRACE) << "Creating proxy session to " << uri.getHost() << std::endl;
 
-      // POST only
-      if(req.getMethod() == "POST") {
-	// prepare session
-	HTTPClientSession session(uri.getHost(), uri.getPort());
-	HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+    // POST only
+    if(req.getMethod() == "POST") {
+      // prepare session
+      HTTPClientSession session(uri.getHost(), uri.getPort());
+      HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
 
-	LOG(TRACE) << "POST request to=" << uri.getHost() << std::endl;
+      LOG(TRACE) << "POST request to=" << uri.getHost() << std::endl;
 
-	proxy_req.setContentType("application/x-www-form-urlencoded");
-	proxy_req.setKeepAlive(true);
-	proxy_req.setContentLength(req.getContentLength());
+      proxy_req.setContentType("application/x-www-form-urlencoded");
+      proxy_req.setKeepAlive(true);
+      proxy_req.setContentLength(req.getContentLength());
 
-	LOG(TRACE) << "Post content length=" << proxy_req.getContentLength() << std::endl;
+      LOG(TRACE) << "Post content length=" << proxy_req.getContentLength() << std::endl;
 
-	// Copy over cookies from client's request to proxy request
-	Poco::Net::NameValueCollection postCookies;
-	req.getCookies(postCookies);
-	proxy_req.setCookies(postCookies);
+      // Copy over cookies from client's request to proxy request
+      Poco::Net::NameValueCollection postCookies;
+      req.getCookies(postCookies);
+      proxy_req.setCookies(postCookies);
 
-	std::ostream& opost = session.sendRequest(proxy_req);
+      std::ostream& opost = session.sendRequest(proxy_req);
 
-	HTMLForm htmlBody(req, req.stream());
+      HTMLForm htmlBody(req, req.stream());
 
-	htmlBody.write(opost);
-  /*
-	LOG(TRACE) << "POST body=";
-	htmlBody.write(LOG(TRACE));
-	LOG(TRACE) << endl;
-  */
+      htmlBody.write(opost);
+      /*
+      LOG(TRACE) << "POST body=";
+      htmlBody.write(LOG(TRACE));
+      LOG(TRACE) << endl;
+      */
 
-      }
-      else {
-	/* GET or other request method */
-
-	if (req.getMethod() == "GET"){
-
-	  // check if the request has been cached
-	  Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
-
-	  if (!checkResponse.isNull()){
-	    std::ostream& out = resp.send();
-	    out << (*checkResponse).getResponseData().str();
-	    LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
-	    return;
-	  }
-	  else{
-	    LOG(DEBUG) << "The request is not in the cache" << endl;
-	  }
-	}
-
-	HTTPClientSession session(uri.getHost(), uri.getPort());
-	HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
-
-	// send request normally
-	proxy_req.setContentType("text/html");
-	session.sendRequest(proxy_req);
-
-	// get response
-	HTTPResponse proxy_resp;
-	// create istream for session response
-	istream &is = session.receiveResponse(proxy_resp);
-
-	ostringstream oss;
-	oss << is.rdbuf();  // extract stream contents for caching
-
-	if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
-	  // add if 200-OK resp to GET request
-
-	  // determine expiration
-
-	  // testing basic function for now
-	  this->staticCache.add(key, CacheResponse(oss.str(), 10, false));
-	}
-
-	LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason()
-		   << std::endl;
-
-	LOG(TRACE) << "Requesting url=" << uri.getHost() << std::endl
-		   << "port=" << uri.getPort() << endl
-		   << "path=" << path << endl;
-
-	resp.setStatus(proxy_resp.getStatus());
-	resp.setContentType(proxy_resp.getContentType());
-
-	// Copy over cookies from proxy's response to client response
-	std::vector<HTTPCookie> respCookies;
-	proxy_resp.getCookies(respCookies);
-
-	for (int i=0 ; i < respCookies.size(); i++) {
-	  HTTPCookie cookie(respCookies[i]);
-	  resp.addCookie(cookie);
-	}
-
-	std::ostream& out = resp.send();
-
-	// Copy HTTP stream to app server response stream
-	out << oss.str();
-      }
     }
+    else {
+      /* GET or other request method */
+
+      if (req.getMethod() == "GET"){
+
+        // check if the request has been cached
+        Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
+
+        if (!checkResponse.isNull()){
+          std::ostream& out = resp.send();
+          out << (*checkResponse).getResponseData().str();
+          LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
+          return;
+        }
+        else{
+          LOG(DEBUG) << "The request is not in the cache" << endl;
+        }
+      }
+
+      HTTPClientSession session(uri.getHost(), uri.getPort());
+      HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+
+      // send request normally
+      proxy_req.setContentType("text/html");
+      session.sendRequest(proxy_req);
+
+      // get response
+      HTTPResponse proxy_resp;
+      // create istream for session response
+      istream &is = session.receiveResponse(proxy_resp);
+
+      ostringstream oss;
+      oss << is.rdbuf();  // extract stream contents for caching
+
+      if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
+        // add if 200-OK resp to GET request
+
+        // determine expiration
+
+        // testing basic function for now
+        this->staticCache.add(key, CacheResponse(oss.str(), 10, false));
+      }
+
+      LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason()
+      << std::endl;
+
+      LOG(TRACE) << "Requesting url=" << uri.getHost() << std::endl
+      << "port=" << uri.getPort() << endl
+      << "path=" << path << endl;
+
+      resp.setStatus(proxy_resp.getStatus());
+      resp.setContentType(proxy_resp.getContentType());
+
+      // Copy over cookies from proxy's response to client response
+      std::vector<HTTPCookie> respCookies;
+      proxy_resp.getCookies(respCookies);
+
+      for (int i=0 ; i < respCookies.size(); i++) {
+        HTTPCookie cookie(respCookies[i]);
+        resp.addCookie(cookie);
+      }
+
+      std::ostream& out = resp.send();
+
+      // Copy HTTP stream to app server response stream
+      out << oss.str();
+    }
+  }
   catch (Poco::Exception &ex){
 
     LOG(DEBUG) << "Failed to get response from url=" << req.getURI() << std::endl
-	       << "method=" << req.getMethod() << std::endl
-	       << ex.what() << ": " << ex.message() << endl;
+    << "method=" << req.getMethod() << std::endl
+    << ex.what() << ": " << ex.message() << endl;
 
     resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
   }
