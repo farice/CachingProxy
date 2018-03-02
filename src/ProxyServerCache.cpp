@@ -28,7 +28,7 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp):
   expired(exp),
   timeAdded(clock())
 {
-  startExpire(this->maxFreshness); // start the expiration timer
+  //startExpire(this->maxFreshness); // start the expiration timer
 }
 
 CacheResponse::~CacheResponse(){}

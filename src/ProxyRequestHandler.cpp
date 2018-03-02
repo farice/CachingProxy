@@ -203,14 +203,12 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   //string respString(istreambuf_iterator<char>(is), {}); // works but is slow
   //string respString = istreamToStr(is); // works but unsure of errors
 
-  /*
-  this->requestCache->add("wombo","womboing");
-  */
+
   this->requestCache->add("wombology",CacheResponse("Hello", 99.9, false));
-  poco_assert(this->requestCache->size() == 2);
+  poco_assert(this->requestCache->size() == 1);
 
   Poco::SharedPtr<CacheResponse> element = this->requestCache->get("wombology");
-  //poco_assert(*element == "womboing");
+  poco_assert((*element).getResponseData() == "Hello");
   
   
   string responseVal;
@@ -222,13 +220,22 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   ostringstream oss;
   oss << is.rdbuf();
   responseVal = oss.str();
+  
 
-  //*/
+  // check that replying with a stored response is the same as feeding into the
+  // istream from the response 
+
+  
+  ostringstream toStore(oss.str());
+  //  toStore << oss.str();
+  //cout << "The value of toStore ostringstream = " << toStore.str() << endl;
+  
+  
 
   out << oss.str();  //responseVal.data();
   
   
-  LOG(DEBUG) << "The responseVal string  = " << responseVal << endl;
+  LOG(DEBUG) << "The responseVal string  = " << toStore.str() << endl;
    
   LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
