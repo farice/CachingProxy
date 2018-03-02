@@ -28,6 +28,48 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
   return key;
 }
 
+void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
+  // Copy over headers
+  NameValueCollection::ConstIterator i = fromResp.begin();
+  while(i!=fromResp.end()){
+      toResp.add(i->first, i->second);
+      ++i;
+  }
+
+  // Copy over cookies from proxy's response to client response
+  std::vector<HTTPCookie> respCookies;
+  fromResp.getCookies(respCookies);
+
+  for (int i=0 ; i < respCookies.size(); i++) {
+    HTTPCookie cookie(respCookies[i]);
+    toResp.addCookie(cookie);
+  }
+
+  toResp.setStatus(fromResp.getStatus());
+  toResp.setContentType(fromResp.getContentType());
+}
+
+void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp) {
+  // Copy over headers
+  Poco::NameValueCollection::ConstIterator i = fromResp.begin();
+  while(i!=fromResp.end()){
+      toResp.add(i->first, i->second);
+      ++i;
+  }
+
+  // Copy over cookies from proxy's response to client response
+  std::vector<Poco::Net::HTTPCookie> respCookies;
+  fromResp.getCookies(respCookies);
+
+  for (int i=0 ; i < respCookies.size(); i++) {
+    Poco::Net::HTTPCookie cookie(respCookies[i]);
+    toResp.addCookie(cookie);
+  }
+
+  toResp.setStatus(fromResp.getStatus());
+  toResp.setContentType(fromResp.getContentType());
+}
+
 CacheResponse::CacheResponse(Poco::Net::HTTPResponse response, double maxFresh, bool exp, bool noCache):
   maxFreshness(maxFresh),
   expired(exp),
@@ -131,48 +173,6 @@ double CacheResponse::getTimeLeft(){
   return this->currentFreshness;
 }
 */
-
-void CacheResponse::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
-  // Copy over headers
-  NameValueCollection::ConstIterator i = fromResp.begin();
-  while(i!=fromResp.end()){
-      toResp.add(i->first, i->second);
-      ++i;
-  }
-
-  // Copy over cookies from proxy's response to client response
-  std::vector<HTTPCookie> respCookies;
-  fromResp.getCookies(respCookies);
-
-  for (int i=0 ; i < respCookies.size(); i++) {
-    HTTPCookie cookie(respCookies[i]);
-    toResp.addCookie(cookie);
-  }
-
-  toResp.setStatus(fromResp.getStatus());
-  toResp.setContentType(fromResp.getContentType());
-}
-
-void CacheResponse::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp) {
-  // Copy over headers
-  NameValueCollection::ConstIterator i = fromResp.begin();
-  while(i!=fromResp.end()){
-      toResp.add(i->first, i->second);
-      ++i;
-  }
-
-  // Copy over cookies from proxy's response to client response
-  std::vector<HTTPCookie> respCookies;
-  fromResp.getCookies(respCookies);
-
-  for (int i=0 ; i < respCookies.size(); i++) {
-    HTTPCookie cookie(respCookies[i]);
-    toResp.addCookie(cookie);
-  }
-
-  toResp.setStatus(fromResp.getStatus());
-  toResp.setContentType(fromResp.getContentType());
-}
 
 
 void CacheResponse::setMaxFreshness(double newFreshness){
