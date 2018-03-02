@@ -23,10 +23,63 @@
 #include <Poco/Delegate.h>
 #include <memory>
 #include <iostream>
+#include <Poco/Thread.h>
 
 namespace Poco {
 namespace Net {
 
+class DestinationRelay:public Poco::Runnable {
+	public:
+		DestinationRelay(HTTPServerSession& sess, StreamSocket& dest, string h): session(sess), destinationServer(dest), host(h) {}
+
+		virtual void run() {
+
+			// 128 KB for destination (assumption is destination will pass more data than client)
+			unsigned char destinationBuffer[131072];
+
+			bool isOpen = true;
+
+			Poco::Timespan readPollTimeOut(10,500);
+			Poco::Timespan writePollTimeOut(1,0);
+
+			LOG(DEBUG) << destinationServer.getBlocking() << "-" << destinationServer.getKeepAlive() << "-" << destinationServer.getNoDelay()
+			<< "-" << destinationServer.getReceiveBufferSize() << "-" << destinationServer.getReceiveTimeout().seconds() << "-"
+			<< destinationServer.getSendBufferSize() << "-" << destinationServer.getSendTimeout().seconds() << endl;
+
+			while(isOpen){
+					int nDestinationBytes = -1;
+
+					try {
+						if (destinationServer.poll(readPollTimeOut, Socket::SELECT_READ) == true) {
+							LOG(DEBUG) << "Destination server has more requests! host=" << host << endl  << flush;
+							nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
+						}
+						if (nDestinationBytes > 0 && session.socket().poll(writePollTimeOut, Socket::SELECT_WRITE) == true) {
+							LOG(DEBUG) << "Number of bytes received from destination=" << nDestinationBytes << "host=" << host << endl << flush;
+							LOG(DEBUG) << "Sending bytes to client server... host=" << host << std::endl;
+							session.socket().sendBytes(destinationBuffer, nDestinationBytes);
+							LOG(DEBUG) << "Sent bytes to client server. host=" << host << std::endl;
+						}
+					}
+					catch (Poco::Exception& exc) {
+							//Handle your network errors.
+							LOG(ERROR) << "Network error=" << exc.displayText() << "host=" << host << endl;
+							isOpen = false;
+					}
+
+						if (nDestinationBytes == 0){
+								LOG(DEBUG) << "Client or destination closes connection! host=" << host << endl << flush;
+								isOpen = false;
+						}
+
+			}
+		}
+
+		private:
+			HTTPServerSession& session;
+			StreamSocket destinationServer;
+			std::string host;
+	};
 
 ProxyServerConnection::ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory):
 	TCPServerConnection(socket),
@@ -103,7 +156,25 @@ void ProxyServerConnection::run()
 						} else {
 							LOG(DEBUG) << "Potential CONNECT request for this session." << std::endl;
 							connect = true;
-							relayData(session, request.getHost());
+
+							StreamSocket destinationServer = StreamSocket();
+							string host(request.getHost());
+							SocketAddress addr = SocketAddress(host);
+							destinationServer.connect(addr);
+
+							unsigned char okMessage[] = "200 OK";
+							session.socket().sendBytes(okMessage, 7);
+
+							destinationServer.setBlocking(false);
+							session.socket().setBlocking(false);
+							LOG(DEBUG) << "Handling request as HTTPS data. host=" << host << std::endl;
+
+							Poco::Thread destThread;
+
+							Poco::Net::DestinationRelay dRelay(session, destinationServer, host);
+							destThread.start(dRelay);
+							destThread.join();
+							relayClientData(session, destinationServer, host);
 							continue;
 						}
 
@@ -157,46 +228,22 @@ void ProxyServerConnection::run()
 	}
 }
 
-void ProxyServerConnection::relayData(HTTPServerSession& session, std::string host) {
+void ProxyServerConnection::relayClientData(HTTPServerSession& session, StreamSocket& destinationServer, std::string host) {
 
-	// 64 KB for client, 128 KB for destination (assumption is destination will pass more data than client)
-	// This may create unrealistic memory overhead
-	// TODO - Consider
+	// 64 KB for client (assumption is destination will pass more data than client)
 	unsigned char clientBuffer[65336];
-	unsigned char destinationBuffer[131072];
 
 	bool isOpen = true;
-	// 1s timeout when polling
 
-	Poco::Timespan readPollTimeOut(0,500);
+	Poco::Timespan readPollTimeOut(10,500);
 	Poco::Timespan writePollTimeOut(1,0);
-
-	StreamSocket destinationServer = StreamSocket();
-	SocketAddress addr = SocketAddress(host);
-	destinationServer.connect(addr);
 
 	LOG(DEBUG) << session.socket().getBlocking() << "-" << session.socket().getKeepAlive() << "-" << session.socket().getNoDelay()
 	<< "-" << session.socket().getReceiveBufferSize() << "-" << session.socket().getReceiveTimeout().seconds() << "-"
 	<< session.socket().getSendBufferSize() << "-" << session.socket().getSendTimeout().seconds() << endl;
 
-	LOG(DEBUG) << destinationServer.getBlocking() << "-" << destinationServer.getKeepAlive() << "-" << destinationServer.getNoDelay()
-	<< "-" << destinationServer.getReceiveBufferSize() << "-" << destinationServer.getReceiveTimeout().seconds() << "-"
-	<< destinationServer.getSendBufferSize() << "-" << destinationServer.getSendTimeout().seconds() << endl;
-
-	unsigned char okMessage[] = "200 OK";
-	session.socket().sendBytes(okMessage, 7);
-
-	session.socket().setBlocking(false);
-	destinationServer.setBlocking(false);
-	//session.setKeepAlive(true);
-
-	LOG(DEBUG) << "Handling request as HTTPS data. host=" << host << std::endl;
-
-	// TODO - Poll each address (client and destination) in separate threads so we can use poll to signal and wake efficiently
-	// For now, we just poll repeatedly and the overhead is seen clearly (compare HTTP vs. HTTPS load time)
 	while(isOpen){
 			int nClientBytes = -1;
-			int nDestinationBytes = -1;
 
 			try {
 				if (session.socket().poll(readPollTimeOut, Socket::SELECT_READ) == true) {
@@ -211,17 +258,6 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 					LOG(DEBUG) << "Sent bytes to destination server. host=" << host << std::endl;
 				}
 
-				if (destinationServer.poll(readPollTimeOut, Socket::SELECT_READ) == true) {
-					LOG(DEBUG) << "Destination server has more requests! host=" << host << endl  << flush;
-					nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
-				}
-				if (nDestinationBytes > 0 && session.socket().poll(writePollTimeOut, Socket::SELECT_WRITE) == true) {
-					LOG(DEBUG) << "Number of bytes received from destination=" << nDestinationBytes << "host=" << host << endl << flush;
-					LOG(DEBUG) << "Sending bytes to client server... host=" << host << std::endl;
-					session.socket().sendBytes(destinationBuffer, nDestinationBytes);
-					LOG(DEBUG) << "Sent bytes to client server. host=" << host << std::endl;
-					//Poco::StreamCopier::copyStream(destinationBuffer, out);
-				}
 			}
 			catch (Poco::Exception& exc) {
 					//Handle your network errors.
@@ -229,18 +265,12 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 					isOpen = false;
 			}
 
-				if (nClientBytes==0 || nDestinationBytes == 0){
+				if (nClientBytes==0){
 						LOG(DEBUG) << "Client or destination closes connection! host=" << host << endl << flush;
 						isOpen = false;
 				}
 
-//				else{
-
-//					}
-
 	}
-
-	session.setKeepAlive(false);
 }
 
 

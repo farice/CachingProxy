@@ -41,7 +41,7 @@ public:
 	virtual ~ProxyServerConnection();
 		/// Destroys the ProxyServerConnection.
 
-	void relayData(HTTPServerSession& session, std::string host);
+	void relayClientData(HTTPServerSession& session, StreamSocket& destinationServer, std::string host);
 	void run();
 		/// Handles all HTTP requests coming in.
 
