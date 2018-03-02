@@ -22,14 +22,14 @@ namespace Poco {
 
       Poco::BasicEvent<const bool> serverStopped;
 
-      /* -Could use expire cache, but may prevent re-validation functionality 
-	 -Using LRU cache for now 
+      /* -Could use expire cache, but may prevent re-validation functionality
+	 -Using LRU cache for now
       */
       //Poco::LRUCache<std::string, std::string>* factoryCache;
       //Poco::LRUCache<std::string, CacheResponse>* factoryCache;
 
       // COULD BE A NAMESPACI
-      
+
       ProxyServerCache * factoryCache;
     };
 
@@ -37,9 +37,6 @@ namespace Poco {
        it has a static member of the ProxyRequestHandler class */
 
     ///*
- 
+
   }
 }
-
-
-

@@ -24,6 +24,7 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/Exception.h>
+#include <Poco/ThreadPool.h>
 
 using namespace Poco::Net;
 using namespace Poco::Util;
@@ -39,7 +40,7 @@ public:
     _pFactory(pFactory) {
 
     poco_check_ptr (pFactory);
-    LOG(DEBUG) << "keepAlive=" << pParams->getKeepAlive();
+    LOG(TRACE) << "keepAlive=" << pParams->getKeepAlive();
 
   };
   /// Creates the HTTPServerConnectionFactory.
@@ -51,8 +52,8 @@ public:
 
   virtual TCPServerConnection* createConnection(const StreamSocket& socket)
   {
-    LOG(DEBUG) << "create connection" << endl;
-    return new ProxyServerConnection(socket, _pParams, _pFactory);
+    LOG(TRACE) << "create connection" << endl;
+  	return new ProxyServerConnection(socket, _pParams, _pFactory);
   }
   /// Creates an instance of HTTPServerConnection
   /// using the given StreamSocket.
@@ -67,15 +68,20 @@ class ProxyServerApp : public ServerApplication
 protected:
   int main(const vector<string> &)
   {
-    //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
-    TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), ServerSocket(8080), new HTTPServerParams);
+    //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(12345), new HTTPServerParams);
+
+		// minCapacity, maxCapacity, idle timeOut, initial stack size
+		Poco::ThreadPool tp(128, 2048, 60, 0);
+    TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), tp, ServerSocket(12345), new HTTPServerParams);
 
     s.start();
-    LOG(DEBUG) << endl << "Server started" << endl;
+    LOG(INFO) << endl << "Server started" << endl;
+
+		LOG(TRACE) << endl << "Max threads=" << s.maxThreads() << endl;
 
     waitForTerminationRequest();  // wait for CTRL-C or kill
 
-    LOG(DEBUG) << endl << "Shutting down..." << endl;
+    LOG(INFO) << endl << "Shutting down..." << endl;
     s.stop();
 
     return Application::EXIT_OK;
@@ -87,12 +93,10 @@ int main(int argc, char *argv[])
 
   // Initialize logging
   auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::trace, AixLog::Type::normal);
-  auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::trace, AixLog::Type::all, "/var/log/erss/proxy.log");
+  auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::info, AixLog::Type::all, "/var/log/erss/proxy.log");
   AixLog::Log::init({sink_cout, sink_file});
 
   // run proxy app (Poco ServerApplication)
   ProxyServerApp app;
   return app.run(argc, argv);
 }
-
-

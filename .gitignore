@@ -1,3 +1,5 @@
+logs/
+
 # Prerequisites
 *.d
 
@@ -6,6 +8,7 @@
 *.lo
 *.o
 *.obj
+proxy_server
 
 # Precompiled Headers
 *.gch
