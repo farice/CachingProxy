@@ -141,7 +141,7 @@ void ProxyServerConnection::run()
 				//LOG(TRACE) << "Creating request obj..." << std::endl;
 				// Increment unique request id for each new request created
 				HTTPServerRequestImpl request(response, session, _pParams);
-				request.add("unique_id", request_id);
+				request.add("unique_id", std::to_string(request_id));
 				request_id++;
 
 				LOG(TRACE) << "Sucessfully parsed request." << std::endl;
