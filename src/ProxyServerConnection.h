@@ -55,6 +55,7 @@ private:
 	ProxyRequestHandlerFactory::Ptr _pFactory;
 	bool _stopped;
 	Poco::FastMutex _mutex;
+	Poco::FastMutex _requestIdMutex;
 };
 
 

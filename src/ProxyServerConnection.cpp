@@ -136,9 +136,12 @@ void ProxyServerConnection::run()
 				// Increment unique request id for each new request created
 				HTTPServerRequestImpl request(response, session, _pParams);
 				string host(request.getHost());
-				request.add("unique_id", std::to_string(request_id));
 				request.add("ip_addr", session.clientAddress().toString());
+
+				Poco::FastMutex::ScopedLock lock(_requestIdMutex);
+				request.add("unique_id", std::to_string(request_id));
 				request_id++;
+				Poco::FastMutex::ScopedLock unlock(_requestIdMutex);
 
 				LOG(TRACE) << "Sucessfully parsed request." << std::endl;
 				count++;
