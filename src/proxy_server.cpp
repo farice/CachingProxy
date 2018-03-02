@@ -40,7 +40,7 @@ public:
 	_pFactory(pFactory) {
 
     poco_check_ptr (pFactory);
-    LOG(DEBUG) << "keepAlive=" << pParams->getKeepAlive();
+    LOG(TRACE) << "keepAlive=" << pParams->getKeepAlive();
 
   };
 		/// Creates the HTTPServerConnectionFactory.
@@ -52,7 +52,7 @@ public:
 
     virtual TCPServerConnection* createConnection(const StreamSocket& socket)
   {
-    LOG(DEBUG) << "create connection" << endl;
+    LOG(TRACE) << "create connection" << endl;
   	return new ProxyServerConnection(socket, _pParams, _pFactory);
   }
 		/// Creates an instance of HTTPServerConnection
@@ -75,13 +75,13 @@ protected:
     TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), tp, ServerSocket(12345), new HTTPServerParams);
 
     s.start();
-    LOG(DEBUG) << endl << "Server started" << endl;
+    LOG(TRACE) << endl << "Server started" << endl;
 
-		LOG(DEBUG) << endl << "Max threads=" << s.maxThreads() << endl;
+		LOG(TRACE) << endl << "Max threads=" << s.maxThreads() << endl;
 
     waitForTerminationRequest();  // wait for CTRL-C or kill
 
-    LOG(DEBUG) << endl << "Shutting down..." << endl;
+    LOG(TRACE) << endl << "Shutting down..." << endl;
     s.stop();
 
     return Application::EXIT_OK;

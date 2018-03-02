@@ -65,7 +65,7 @@ public:
      while (stillValid){
        elapsedTime = (clock() - startExpireTime) / CLOCKS_PER_SEC;
        if (elapsedTime >= secondsToExpire){
-	 LOG(DEBUG) << " Time is up " << endl;
+	 LOG(TRACE) << " Time is up " << endl;
 	 stillValid = false;
 	 this->isExpired = true;
        }

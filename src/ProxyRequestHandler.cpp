@@ -42,7 +42,7 @@ string makeKey(Poco::URI& uri){
   string key(uri.getHost());
   key.append(to_string(uri.getPort()));
   key.append(uri.getPathAndQuery());
-  LOG(DEBUG) << "Constructed key = " << key << endl;
+  LOG(TRACE) << "Constructed key = " << key << endl;
   return key;
 }
 
@@ -64,11 +64,11 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){
 
     const string controlVal = resp.get("Cache-control");
 
-    LOG(DEBUG) << "Cache-Control=" << resp.get("Cache-control") << endl;
+    LOG(TRACE) << "Cache-Control=" << resp.get("Cache-control") << endl;
 
     if (controlVal.find("max-age=") != string::npos){
       freshness = stoi(controlVal.substr(controlVal.find("=") + 1, string::npos));
-      LOG(DEBUG) << "freshness from max-age = " << freshness << endl;
+      LOG(TRACE) << "freshness from max-age = " << freshness << endl;
       pair<int,int> ret(0, freshness);
       return ret;
     }
@@ -143,7 +143,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   /************************************************/
   // Only using HTTP requests (no danger of HTTPS) //
   /************************************************/
-  LOG(DEBUG) << "HTTP request" << std::endl;
+  LOG(TRACE) << "HTTP request" << std::endl;
 
   try
   {
@@ -170,19 +170,19 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   // If it's in the cache, use the stored istream or data to fulfill the response
   // send request
-  LOG(DEBUG) << "Creating proxy session to " << uri.getHost() << std::endl;
+  LOG(TRACE) << "Creating proxy session to " << uri.getHost() << std::endl;
   HTTPClientSession session(uri.getHost(), uri.getPort());
   HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
 
   // POST only
   if(proxy_req.getMethod() == "POST") {
-    LOG(DEBUG) << "POST request to=" << uri.getHost() << std::endl;
+    LOG(TRACE) << "POST request to=" << uri.getHost() << std::endl;
     proxy_req.setContentType("application/x-www-form-urlencoded");
     proxy_req.setKeepAlive(true);
     proxy_req.setContentLength(req.getContentLength());
 
 
-    LOG(DEBUG) << "Post content length=" << proxy_req.getContentLength() << std::endl;
+    LOG(TRACE) << "Post content length=" << proxy_req.getContentLength() << std::endl;
 
     // Copy over cookies from client's request to proxy request
     Poco::Net::NameValueCollection postCookies;
@@ -195,9 +195,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     //std::istream &ipost = req.stream();
     //Poco::StreamCopier::copyStream(ipost, opost);
     htmlBody.write(opost);
-    LOG(DEBUG) << "POST body=";
-    htmlBody.write(LOG(DEBUG));
-    LOG(DEBUG) << endl;
+    LOG(TRACE) << "POST body=";
+    htmlBody.write(LOG(TRACE));
+    LOG(TRACE) << endl;
 
   } else { // GET / other (per requirements this is the only other HTTP request we are concerned with)
 
@@ -214,7 +214,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   istream &is = session.receiveResponse(proxy_resp);
 
   if (proxy_resp.has("Cache-Control")) {
-    LOG(DEBUG) << "Cache-Control=" << proxy_resp.get("Cache-control") << endl;
+    LOG(TRACE) << "Cache-Control=" << proxy_resp.get("Cache-control") << endl;
   }
   //string respString(istreambuf_iterator<char>(is), {}); // works but is slow
   //string respString = istreamToStr(is); // works but unsure of errors
@@ -236,9 +236,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   out << responseVal.data();
   */
 
-  LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
+  LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
-  LOG(DEBUG) << "Requesting url=" << uri.getHost() << std::endl
+  LOG(TRACE) << "Requesting url=" << uri.getHost() << std::endl
     << "port=" << uri.getPort() << endl
     << "path=" << path << endl;
 
@@ -261,7 +261,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   }
   catch (Poco::Exception &ex)
   {
-  LOG(ERROR) << "Failed to get response from url=" << req.getURI() << std::endl
+  LOG(DEBUG) << "Failed to get response from url=" << req.getURI() << std::endl
     << "method=" << req.getMethod() << std::endl
     << ex.what() << ": " << ex.message() << endl;
 
@@ -269,16 +269,16 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   }
 
 
-  LOG(DEBUG) << resp.getStatus() << " - " << resp.getReason() << std::endl;
+  LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
 ProxyRequestHandler::ProxyRequestHandler():requestCache(nullptr) {
-  //LOG(DEBUG) << "------ Created Proxy Request Handler ------" << endl;
+  //LOG(TRACE) << "------ Created Proxy Request Handler ------" << endl;
 
 }
 
 ProxyRequestHandler::ProxyRequestHandler(Poco::LRUCache<std::string, std::string>* cache):requestCache(cache){
-  //LOG(DEBUG) << "------ Created Proxy Request Handler with cache ------" << endl;
+  //LOG(TRACE) << "------ Created Proxy Request Handler with cache ------" << endl;
 
 }
 
