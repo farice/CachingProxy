@@ -29,21 +29,23 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
 }
 
 
-CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp):
+CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache):
   responseData(respData),
   maxFreshness(maxFresh),
-  expired(exp)
+  expired(exp),
+  isNoCache(noCache)
 {
   Poco::Timestamp ts;
   timeAdded = ts;
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
-CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp,
+CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache,
 			     std::string Etag):
   responseData(respData),
   maxFreshness(maxFresh),
   expired(exp),
+  isNoCache(noCache),
   Etag(Etag)
 {
   Poco::Timestamp ts;
@@ -51,12 +53,22 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp,
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
+CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache, std::string Etag, std::string last_modified):responseData(respData),maxFreshness(maxFresh),expired(exp), isNoCache(noCache),Etag(Etag),last_modified(last_modified)
+{
+  Poco::Timestamp ts;
+  timeAdded = ts;
+  //startExpire(this->maxFreshness); // start the expiration timer
+}
+
+
 
 CacheResponse::CacheResponse(const CacheResponse& rhs):responseData(rhs.responseData.str()),
 						       maxFreshness(rhs.maxFreshness),
-						       currentFreshness(rhs.currentFreshness),
 						       expired(rhs.expired),
-						       timeAdded(rhs.timeAdded)
+						       isNoCache(rhs.isNoCache),
+						       timeAdded(rhs.timeAdded),
+						       Etag(rhs.Etag),
+						       last_modified(rhs.last_modified)
 {
 
 }
@@ -104,14 +116,21 @@ void CacheResponse::setExpired(bool exp){
   this->expired = exp;
 }
 
+/*
 double CacheResponse::getTimeLeft(){
   return this->currentFreshness;
 }
+*/
 
 void CacheResponse::setMaxFreshness(double newFreshness){
   this->maxFreshness = newFreshness;
 }
 
+
 double CacheResponse::getMaxFreshness(){
   return this->maxFreshness;
+}
+
+bool CacheResponse::getIsNoCache(){
+  return this->isNoCache;
 }
