@@ -30,6 +30,8 @@ public:
 
   ~ProxyRequestHandler();
 
+  static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp);
+
   void updateCacheItem(Poco::SharedPtr<CacheResponse>  item);
 
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp);

@@ -1,3 +1,4 @@
+
 #include "logging/aixlog.hpp"
 #include "ProxyRequestHandler.h"
 
@@ -39,7 +40,6 @@ using namespace std;
 
 
 // Note we are only concerned here with the responses to get requests
-/*
 pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is trash
 
   int freshness;
@@ -114,7 +114,6 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is tra
   return ret;
 }
 
-*/
 /*
 Expiration time is determined by more than the cache-control header
 - may be easier to just return a struct with all the information the cache needs to
@@ -309,17 +308,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       // create istream for session response
       istream &is = session.receiveResponse(proxy_resp);
 
-      resp.setStatus(proxy_resp.getStatus());
-      resp.setContentType(proxy_resp.getContentType());
-
-      // Copy over cookies from proxy's response to client response
-      std::vector<HTTPCookie> respCookies;
-      proxy_resp.getCookies(respCookies);
-
-      for (int i=0 ; i < respCookies.size(); i++) {
-        HTTPCookie cookie(respCookies[i]);
-        resp.addCookie(cookie);
-      }
+      copyResponseObj(proxy_resp, resp);
 
       std::ostream& out = resp.send();
       // Copy HTTP stream to app server response stream
@@ -366,6 +355,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       // create istream for session response
       istream &is = session.receiveResponse(proxy_resp);
 
+      // copies cookies, headers, etc
+      copyResponseObj(proxy_resp, resp);
+
       ostringstream oss;
       oss << is.rdbuf();  // extract stream contents for caching
 
@@ -402,18 +394,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       << "port=" << uri.getPort() << endl
       << "path=" << path << endl;
 
-      resp.setStatus(proxy_resp.getStatus());
-      resp.setContentType(proxy_resp.getContentType());
-
-      // Copy over cookies from proxy's response to client response
-      std::vector<HTTPCookie> respCookies;
-      proxy_resp.getCookies(respCookies);
-
-      for (int i=0 ; i < respCookies.size(); i++) {
-        HTTPCookie cookie(respCookies[i]);
-        resp.addCookie(cookie);
-      }
-
       std::ostream& out = resp.send();
 
       // Copy HTTP stream to app server response stream
@@ -435,6 +415,40 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
 void ProxyRequestHandler::updateCacheItem(Poco::SharedPtr<CacheResponse> item) {
   string etag = (*item).getEtag();
+  string last_modified = (*item).getLastModified();
+
+  /*
+  HTTPClientSession session(uri.getHost(), uri.getPort());
+  HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+
+  // send request normally
+  proxy_req.setContentType("text/html");
+  session.sendRequest(proxy_req);
+
+  // get response
+  HTTPResponse proxy_resp;
+  */
+}
+
+void ProxyRequestHandler::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
+  // Copy over headers
+  NameValueCollection::ConstIterator i = fromResp.begin();
+  while(i!=fromResp.end()){
+      toResp.add(i->first, i->second);
+      ++i;
+  }
+
+  // Copy over cookies from proxy's response to client response
+  std::vector<HTTPCookie> respCookies;
+  fromResp.getCookies(respCookies);
+
+  for (int i=0 ; i < respCookies.size(); i++) {
+    HTTPCookie cookie(respCookies[i]);
+    toResp.addCookie(cookie);
+  }
+
+  toResp.setStatus(fromResp.getStatus());
+  toResp.setContentType(fromResp.getContentType());
 }
 
 
