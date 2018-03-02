@@ -16,3 +16,5 @@ before_install:
   - docker-compose build
   - docker-compose up
   - docker ps
+
+  script: cd src && make all
