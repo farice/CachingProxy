@@ -242,6 +242,13 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       resp.setStatus(proxy_resp.getStatus());
       resp.setContentType(proxy_resp.getContentType());
 
+      // Copy over headers
+      NameValueCollection::ConstIterator i = proxy_resp.begin();
+      while(i!=proxy_resp.end()){
+          resp.add(i->first, i->second);
+          ++i;
+      }
+      
       // Copy over cookies from proxy's response to client response
       std::vector<HTTPCookie> respCookies;
       proxy_resp.getCookies(respCookies);
@@ -295,6 +302,13 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       HTTPResponse proxy_resp;
       // create istream for session response
       istream &is = session.receiveResponse(proxy_resp);
+
+      // Copy over headers
+      NameValueCollection::ConstIterator i = proxy_resp.begin();
+      while(i!=proxy_resp.end()){
+          resp.add(i->first, i->second);
+          ++i;
+      }
 
       ostringstream oss;
       oss << is.rdbuf();  // extract stream contents for caching
