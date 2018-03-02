@@ -1,0 +1,29 @@
+#include <Poco/UniqueExpireCache.h>
+#include <Poco/ExpirationDecorator.h>
+#include <Poco/Exception.h>
+
+
+
+// Reponse object that will be cached with an expiration timer
+// This will only work with build in types (so you'd have to be storing
+// some kind of built-in type)
+typedef Poco::ExpirationDecorator<std::istream> ExpRespStream;
+
+
+class ProxyServerCache : public Poco::UniqueExpireCache{
+
+  
+     /// omit any subclass extensions for now 
+
+private:
+
+  std::string makeKey(Poco::URI& targetURI);
+  
+
+  
+public:
+  
+ 
+  
+};
+
