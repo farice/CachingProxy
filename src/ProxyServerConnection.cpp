@@ -17,9 +17,6 @@
 #include <Poco/Net/HTTPServerSession.h>
 #include <Poco/Net/HTTPServerRequestImpl.h>
 #include <Poco/Net/HTTPServerResponseImpl.h>
-//#include <Poco/Net/HTTPRequestHandler.h>
-//#include "ProxyRequestHandler.h"
-//#include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Net/NetException.h>
 #include <Poco/NumberFormatter.h>
 #include <Poco/Timestamp.h>
