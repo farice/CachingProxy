@@ -128,224 +128,218 @@ namespace Poco {
           LOG(TRACE) << "Grabbed lock. from host=" << session.clientAddress().toString() << std::endl;
           if (!_stopped)
           {
+            HTTPServerResponseImpl response(session);
 
-            LOG(TRACE) << "Grabbing lock. from host=" << session.clientAddress().toString() << std::endl;
-            Poco::FastMutex::ScopedLock lock(_mutex);
-            LOG(TRACE) << "Grabbed lock. from host=" << session.clientAddress().toString() << std::endl;
+            // Increment unique request id for each new request created
+            HTTPServerRequestImpl request(response, session, _pParams);
+            std::string host(request.getHost());
+            request.add("ip_addr", session.clientAddress().toString());
 
-            if (!_stopped)
+            _requestIdMutex.lock();
+            request.add("unique_id", std::to_string(request_id));
+            request_id++;
+            _requestIdMutex.unlock();
+
+            LOG(TRACE) << "Sucessfully parsed request." << std::endl;
+            count++;
+            LOG(TRACE) << "Request count=" <<  count << "from host=" << host << std::endl;
+
+            Poco::Timestamp now;
+            response.setDate(now);
+            response.setVersion(request.getVersion());
+
+            response.setKeepAlive(_pParams->getKeepAlive() && request.getKeepAlive() && session.canKeepAlive());
+            if (!server.empty())
+            response.set("Server", server);
+            try
             {
-              HTTPServerResponseImpl response(session);
-
-              // Increment unique request id for each new request created
-              HTTPServerRequestImpl request(response, session, _pParams);
-              std::string host(request.getHost());
-              request.add("ip_addr", session.clientAddress().toString());
-
-              _requestIdMutex.lock();
-              request.add("unique_id", std::to_string(request_id));
-              request_id++;
-              _requestIdMutex.unlock();
-
-              LOG(TRACE) << "Sucessfully parsed request." << std::endl;
-              count++;
-              LOG(TRACE) << "Request count=" <<  count << "from host=" << host << std::endl;
-
-              Poco::Timestamp now;
-              response.setDate(now);
-              response.setVersion(request.getVersion());
-
-              response.setKeepAlive(_pParams->getKeepAlive() && request.getKeepAlive() && session.canKeepAlive());
-              if (!server.empty())
-              response.set("Server", server);
-              try
+              std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
+              if (pHandler.get())
               {
-                std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
-                if (pHandler.get())
-                {
-                  if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
-                  response.sendContinue();
+                if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
+                response.sendContinue();
 
-                  if (request.getMethod() != "CONNECT") {
-                    // HTTP so pass to our ProxyRequestHandler (controls GET, POST, and cache logic)
-                    pHandler->handleRequest(request, response);
-                  } else {
-                    LOG(TRACE) << "Potential CONNECT request for this session." << std::endl;
-                    connect = true;
+                if (request.getMethod() != "CONNECT") {
+                  // HTTP so pass to our ProxyRequestHandler (controls GET, POST, and cache logic)
+                  pHandler->handleRequest(request, response);
+                } else {
+                  LOG(TRACE) << "Potential CONNECT request for this session." << std::endl;
+                  connect = true;
 
-                    StreamSocket destinationServer = StreamSocket();
-                    SocketAddress addr = SocketAddress(host);
-                    destinationServer.connect(addr);
+                  StreamSocket destinationServer = StreamSocket();
+                  SocketAddress addr = SocketAddress(host);
+                  destinationServer.connect(addr);
 
-                    unsigned char okMessage[] = "200 OK";
-                    session.socket().sendBytes(okMessage, 7);
+                  unsigned char okMessage[] = "200 OK";
+                  session.socket().sendBytes(okMessage, 7);
 
-                    destinationServer.setBlocking(false);
-                    session.socket().setBlocking(false);
-                    LOG(TRACE) << "Handling request as HTTPS data. host=" << host << std::endl;
+                  destinationServer.setBlocking(false);
+                  session.socket().setBlocking(false);
+                  LOG(TRACE) << "Handling request as HTTPS data. host=" << host << std::endl;
 
-                    Poco::Thread destThread;
+                  Poco::Thread destThread;
 
-                    Poco::Net::DestinationRelay dRelay(session, destinationServer, host);
-                    destThread.start(dRelay);
-                    relayClientData(session, destinationServer, host);
-                    LOG(TRACE) << "Waiting for dest relay thread to exit..." << std::endl;
-                    destThread.join();
-                    LOG(TRACE) << "Dest relay thread exited" << std::endl;
+                  Poco::Net::DestinationRelay dRelay(session, destinationServer, host);
+                  destThread.start(dRelay);
+                  relayClientData(session, destinationServer, host);
+                  LOG(TRACE) << "Waiting for dest relay thread to exit..." << std::endl;
+                  destThread.join();
+                  LOG(TRACE) << "Dest relay thread exited" << std::endl;
 
-                    LOG(INFO) << request.get("unique_id") << ": " << "Tunnel closed" << std::endl;
-                    continue;
-                  }
-
-                  //LOG(TRACE) << "responseStatus=" << response.getStatus() << std::endl;
-
-                  //LOG(TRACE) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
-                  //<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
-                  session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
-
+                  LOG(INFO) << request.get("unique_id") << ": " << "Tunnel closed" << std::endl;
+                  continue;
                 }
-                else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
-              }
-          catch (Poco::Exception&)
-          {
-            //LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
 
-            if (!response.sent())
-            {
-              try
-              {
-                sendErrorResponse(session, HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
+                //LOG(TRACE) << "responseStatus=" << response.getStatus() << std::endl;
+
+                //LOG(TRACE) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
+                //<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
+                session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
+
               }
-              catch (...)
-              {
-              }
+
+              else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
             }
+            catch (Poco::Exception&)
+            {
+              //LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
 
-            throw;
+              if (!response.sent())
+              {
+                try
+                {
+                  sendErrorResponse(session, HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
+                }
+                catch (...)
+                {
+                }
+              }
+
+              throw;
+            }
           }
         }
-      }
-      catch (NoMessageException&)
-      {
-        LOG(DEBUG) << "EXCEPTION: Parse Data w/ NoMessage" << std::endl;
-        break;
-      }
-      catch (MessageException&)
-      {
-        LOG(DEBUG) << "EXCEPTION: Parse Data w/ Message" << std::endl;
-        sendErrorResponse(session, HTTPResponse::HTTP_BAD_REQUEST);
-      }
-      catch (Poco::Exception&)
-      {
-        LOG(DEBUG) << "EXCEPTION: Parse Data" << std::endl;
-        if (session.networkException())
+        catch (NoMessageException&)
         {
-          session.networkException()->rethrow();
+          LOG(DEBUG) << "EXCEPTION: Parse Data w/ NoMessage" << std::endl;
+          break;
         }
-        else throw;
+        catch (MessageException&)
+        {
+          LOG(DEBUG) << "EXCEPTION: Parse Data w/ Message" << std::endl;
+          sendErrorResponse(session, HTTPResponse::HTTP_BAD_REQUEST);
+        }
+        catch (Poco::Exception&)
+        {
+          LOG(DEBUG) << "EXCEPTION: Parse Data" << std::endl;
+          if (session.networkException())
+          {
+            session.networkException()->rethrow();
+          }
+          else throw;
+        }
       }
     }
-  }
 
-  void ProxyServerConnection::relayClientData(HTTPServerSession& session, StreamSocket& destinationServer, std::string host) {
+    void ProxyServerConnection::relayClientData(HTTPServerSession& session, StreamSocket& destinationServer, std::string host) {
 
-    // 64 KB for client (assumption is destination will pass more data than client)
-    unsigned char clientBuffer[65336];
+      // 64 KB for client (assumption is destination will pass more data than client)
+      unsigned char clientBuffer[65336];
 
-    bool isOpen = true;
+      bool isOpen = true;
 
-    Poco::Timespan readPollTimeOut(10,500);
-    Poco::Timespan writePollTimeOut(1,0);
+      Poco::Timespan readPollTimeOut(10,500);
+      Poco::Timespan writePollTimeOut(1,0);
 
-    LOG(TRACE) << session.socket().getBlocking() << "-" << session.socket().getKeepAlive() << "-" << session.socket().getNoDelay()
-    << "-" << session.socket().getReceiveBufferSize() << "-" << session.socket().getReceiveTimeout().seconds() << "-"
-    << session.socket().getSendBufferSize() << "-" << session.socket().getSendTimeout().seconds() << std::endl;
+      LOG(TRACE) << session.socket().getBlocking() << "-" << session.socket().getKeepAlive() << "-" << session.socket().getNoDelay()
+      << "-" << session.socket().getReceiveBufferSize() << "-" << session.socket().getReceiveTimeout().seconds() << "-"
+      << session.socket().getSendBufferSize() << "-" << session.socket().getSendTimeout().seconds() << std::endl;
 
-    while(isOpen){
-      //LOG(TRACE) << "Polling client for requests. host=" << host << endl;
-      int nClientBytes = -1;
+      while(isOpen){
+        //LOG(TRACE) << "Polling client for requests. host=" << host << endl;
+        int nClientBytes = -1;
 
-      try {
-        if (session.socket().poll(readPollTimeOut, Socket::SELECT_READ) == true) {
-          LOG(TRACE) << "Session has more requests! host=" << host << std::endl << std::flush;
-          nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
+        try {
+          if (session.socket().poll(readPollTimeOut, Socket::SELECT_READ) == true) {
+            LOG(TRACE) << "Session has more requests! host=" << host << std::endl << std::flush;
+            nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
+          }
+
+          if (nClientBytes > 0 && destinationServer.poll(writePollTimeOut, Socket::SELECT_WRITE) == true) {
+            LOG(TRACE) << "Number of bytes received from client=" << nClientBytes << " host=" << host << std::endl << std::flush;
+            LOG(TRACE) << "Sending bytes to destination server.. host=" << host << std::endl;
+            destinationServer.sendBytes(clientBuffer, nClientBytes);
+            LOG(TRACE) << "Sent bytes to destination server. host=" << host << std::endl;
+          }
+
+        }
+        catch (Poco::Exception& exc) {
+          //Handle your network errors.
+          LOG(DEBUG) << "Network error=" << exc.displayText() << "host=" << host << std::endl;
+          isOpen = false;
         }
 
-        if (nClientBytes > 0 && destinationServer.poll(writePollTimeOut, Socket::SELECT_WRITE) == true) {
-          LOG(TRACE) << "Number of bytes received from client=" << nClientBytes << " host=" << host << std::endl << std::flush;
-          LOG(TRACE) << "Sending bytes to destination server.. host=" << host << std::endl;
-          destinationServer.sendBytes(clientBuffer, nClientBytes);
-          LOG(TRACE) << "Sent bytes to destination server. host=" << host << std::endl;
+        if (nClientBytes==0){
+          LOG(TRACE) << "Client or destination closes connection! host=" << host << std::endl << std::flush;
+          isOpen = false;
         }
 
       }
-      catch (Poco::Exception& exc) {
-        //Handle your network errors.
-        LOG(DEBUG) << "Network error=" << exc.displayText() << "host=" << host << std::endl;
-        isOpen = false;
-      }
-
-      if (nClientBytes==0){
-        LOG(TRACE) << "Client or destination closes connection! host=" << host << std::endl << std::flush;
-        isOpen = false;
-      }
-
     }
-  }
 
 
-  void ProxyServerConnection::sendErrorResponse(HTTPServerSession& session, HTTPResponse::HTTPStatus status)
-  {
-    LOG(DEBUG) << "Send error response="
-    << status << std::endl;
-
-    HTTPServerResponseImpl response(session);
-    response.setVersion(HTTPMessage::HTTP_1_1);
-    response.setStatusAndReason(status);
-    response.setKeepAlive(false);
-    response.send();
-    session.setKeepAlive(false);
-  }
-
-
-  void ProxyServerConnection::onServerStopped(const bool& abortCurrent)
-  {
-    _stopped = true;
-    if (abortCurrent)
+    void ProxyServerConnection::sendErrorResponse(HTTPServerSession& session, HTTPResponse::HTTPStatus status)
     {
-      try
-      {
-        // Note: On Windows, select() will not return if one of its socket is being
-        // shut down. Therefore we have to call close(), which works better.
-        // On other platforms, we do the more graceful thing.
-        #if defined(_WIN32)
-        socket().close();
-        #else
-        socket().shutdown();
-        #endif
-      }
-      catch (...)
-      {
-      }
+      LOG(DEBUG) << "Send error response="
+      << status << std::endl;
+
+      HTTPServerResponseImpl response(session);
+      response.setVersion(HTTPMessage::HTTP_1_1);
+      response.setStatusAndReason(status);
+      response.setKeepAlive(false);
+      response.send();
+      session.setKeepAlive(false);
     }
-    else
+
+
+    void ProxyServerConnection::onServerStopped(const bool& abortCurrent)
     {
-      Poco::FastMutex::ScopedLock lock(_mutex);
-
-      try
+      _stopped = true;
+      if (abortCurrent)
       {
-        #if defined(_WIN32)
-        socket().close();
-        #else
-        socket().shutdown();
-        #endif
+        try
+        {
+          // Note: On Windows, select() will not return if one of its socket is being
+          // shut down. Therefore we have to call close(), which works better.
+          // On other platforms, we do the more graceful thing.
+          #if defined(_WIN32)
+          socket().close();
+          #else
+          socket().shutdown();
+          #endif
+        }
+        catch (...)
+        {
+        }
       }
-      catch (...)
+      else
       {
+        Poco::FastMutex::ScopedLock lock(_mutex);
+
+        try
+        {
+          #if defined(_WIN32)
+          socket().close();
+          #else
+          socket().shutdown();
+          #endif
+        }
+        catch (...)
+        {
+        }
       }
     }
+
+
   }
-
-
-}
 } // namespace Poco::Net
