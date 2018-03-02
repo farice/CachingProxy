@@ -138,10 +138,10 @@ void ProxyServerConnection::run()
 				string host(request.getHost());
 				request.add("ip_addr", session.clientAddress().toString());
 
-				Poco::FastMutex::ScopedLock lock(_requestIdMutex);
+				Poco::FastMutex::FastMutex lock(_requestIdMutex);
 				request.add("unique_id", std::to_string(request_id));
 				request_id++;
-				Poco::FastMutex::ScopedLock unlock(_requestIdMutex);
+				Poco::FastMutex::FastMutex unlock(_requestIdMutex);
 
 				LOG(TRACE) << "Sucessfully parsed request." << std::endl;
 				count++;
