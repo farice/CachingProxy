@@ -369,7 +369,14 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 	  LOG(TRACE) << "The response is cachable " << endl;
 
 	  // now parse to find the Etag, lastModified, and other header fields
-	  
+
+	  std::string etag = getEtag(proxy_resp);
+
+	  std::string lastModified = getLastModified(proxy_resp);
+
+	  std::string expires = getExpires(proxy_resp);
+
+	  double maxAge = getMaxAge(proxy_resp);
 	  
 	  if (hasNoCacheDirective(proxy_resp)){
 	    LOG(TRACE) << "The response is 'no-cache', must always be validated" << endl;
