@@ -139,7 +139,7 @@ namespace Poco {
 
               // Increment unique request id for each new request created
               HTTPServerRequestImpl request(response, session, _pParams);
-              string host(request.getHost());
+              std::string host(request.getHost());
               request.add("ip_addr", session.clientAddress().toString());
 
               _requestIdMutex.lock();
@@ -206,26 +206,6 @@ namespace Poco {
                 }
                 else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
               }
-              catch (Poco::Exception&)
-              {
-                //LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
-
-                if (!response.sent())
-                {
-                  try
-                  {
-                    sendErrorResponse(session, HTTPResponse::HTTP_INTERNAL_SERVER_ERROR);
-                  }
-                  catch (...)
-                  {
-                  }
-                }
-
-                throw;
-              }
-            }
-            else sendErrorResponse(session, HTTPResponse::HTTP_NOT_IMPLEMENTED);
-          }
           catch (Poco::Exception&)
           {
             //LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
