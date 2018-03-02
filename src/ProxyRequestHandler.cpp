@@ -265,14 +265,15 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
         // TODO: - validation logic
         // add CacheResponseItem call that returns whether item needs to be revalidated to validItem
-        bool validItem = false;
-
-        if (!validItem) {
-          // TODO: - return updated/same cacheitem depending on result of validate method (in this class)
-          //
-        }
+        bool  validItem = false;
 
         if (!checkResponse.isNull()){
+
+          if (!validItem) {
+            // TODO: - update cacheitem depending on result of If-None-Match request
+            updateCacheItem(checkResponse);
+          }
+
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
           LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
@@ -348,6 +349,10 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
 
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
+}
+
+void ProxyRequestHandler::updateCacheItem(CacheResponse& item) {
+  string etag = item.Etag;
 }
 
 

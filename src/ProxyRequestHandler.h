@@ -30,6 +30,8 @@ public:
 
   ~ProxyRequestHandler();
 
+  void updateCacheItem(CacheResponse& item);
+
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp);
 
   std::vector<std::pair<std::string,std::string> > getHeaders(HTTPResponse& resp);
@@ -42,7 +44,7 @@ public:
   // we'll need to differentiate between not present and needing re-validation, etc.
 
   bool isCacheableResp(HTTPResponse& resp);
-  
+
 private:
   ProxyRequestHandler(const ProxyRequestHandler&);
   ProxyRequestHandler(const HTTPRequestHandler&);
