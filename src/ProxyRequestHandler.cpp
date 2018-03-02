@@ -37,11 +37,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   std::ostream& out = resp.send();
 
-  LOG(DEBUG) << "Plain request" << std::endl;
-  if (req.has("Cache-Control")) {
-    LOG(DEBUG) << "Cache-Control=" << req.get("Cache-control");
-  }
-
   try
   {
   // prepare session
@@ -56,6 +51,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   HTTPClientSession session(uri.getHost(), uri.getPort());
   HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
 
+  // POST only
   if(proxy_req.getMethod() == "POST") {
     LOG(DEBUG) << "POST request to=" << uri.getHost() << std::endl;
     proxy_req.setContentType("application/x-www-form-urlencoded");
@@ -67,19 +63,24 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     proxy_req.setCookies(cookies);
     //LOG(DEBUG) << "csrf_token=" << req.get("csrf_token");
 
+    string body("csrfmiddlewaretoken=qtHiu8G3zxkIMWG3tSe2paIvrpNYxSxmTCB1AaMZoCsmF8t8mLsN3rGq2Po5Hf8l&username=farice&password=farice23&next=");
     std::ostream& opost = session.sendRequest(proxy_req);
+    session.sendRequest(proxy_req) << body;
     std::istream &ipost = req.stream();
 
-    LOG(DEBUG) << "Writing body to POST stream" << endl;
-    opost << "csrfmiddlewaretoken=BjlcZDznXYIvs1SxyCXhw0JzzBKs5VXpWGq8q4hFOnKoGPTpUsAWFJF5jd81Bo2S&username=farice&password=farice23&next=";
-    //Poco::StreamCopier::copyStream(ipost, opost);
+    LOG(DEBUG) << "Writing body to POST stream=" << body << endl;
+
+    //opost << body;
+    Poco::StreamCopier::copyStream(ipost, opost);
 
     //proxy_req.write(std::cout);
 
-  } else {
+  } else { // GET / other (per requirements this is the only other HTTP request we are concerned with)
+
     proxy_req.setContentType("text/html");
     session.sendRequest(proxy_req);
   }
+  // endif POST
 
 
   // get response
@@ -106,7 +107,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
   }
 
-  //out << resp.getStatus() << " - " << resp.getReason() << endl;
+
   LOG(DEBUG) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
