@@ -30,7 +30,8 @@
 #include <Poco/Exception.h>
 #include <Poco/Net/HTMLForm.h>
 #include <Poco/Net/HTTPCookie.h>
-
+#include<Poco/Timestamp.h>
+#include<Poco/DateTimeFormatter.h>
 
 using namespace Poco::Net;
 using namespace Poco::Util;
@@ -161,7 +162,11 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   // Only using HTTP requests (no danger of HTTPS) //
   /************************************************/
   request_id++;
-  LOG(TRACE) << "HTTP request" << std::endl;
+  Poco::Timestamp now;
+  string fmt = "%w %b %f %H:%M:%S %Y";
+  string timestamp_str = Poco::DateTimeFormatter::format(now, fmt);
+  LOG(INFO) << request_id << ": \"" << req.getMethod() << " " << req.getURI() << " " << req.getVersion()
+  << "\" from " << " @ " << timestamp_str << std::endl;
 
   try
     {
@@ -304,4 +309,3 @@ ProxyRequestHandler::~ProxyRequestHandler() {
 }
 
 ProxyServerCache ProxyRequestHandler::staticCache;
-int ProxyRequestHandler::request_id = 0;
