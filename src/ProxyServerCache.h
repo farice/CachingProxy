@@ -17,9 +17,10 @@ private:
   //std::string responseData;
   std::ostringstream responseData;
   double maxFreshness;
-  double currentFreshness;
+  //double currentFreshness;
   bool expired;
-  Poco::Timestamp timeAdded; // some kind of timer
+  bool isNoCache;
+  Poco::Timestamp timeAdded; // timestamp of when item was cached
   std::string Etag;
   std::string last_modified;
 
@@ -28,11 +29,14 @@ public:
   //CacheResponse(std::string respData, double maxFresh, bool exp);
   CacheResponse(const CacheResponse& rhs);
 
-  CacheResponse(std::string respData, double maxFresh, bool exp);
-  CacheResponse(std::string respData, double maxFresh, bool exp, std::string Etag);
+  CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache);
+  CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache, std::string Etag);
+  CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache, std::string Etag,
+		std::string last_modified);
 
   std::string getEtag();
   std::string getLastModified();
+  bool getIsNoCache();
   
   ~CacheResponse();
 
