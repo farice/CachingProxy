@@ -161,7 +161,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   /************************************************/
   // Only using HTTP requests (no danger of HTTPS) //
   /************************************************/
-  request_id++;
+
   Poco::Timestamp now;
   string fmt = "%w %b %f %H:%M:%S %Y";
   string timestamp_str = Poco::DateTimeFormatter::format(now, fmt);
