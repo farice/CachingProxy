@@ -17,13 +17,23 @@
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/Exception.h>
 
+#include <Poco/UniqueExpireCache.h>
+#include <Poco/LRUCache.h>
+#include <Poco/ExpirationDecorator.h>
+
+
 using namespace Poco::Net;
+
+// Expiration wrapper for istream responses stored in the cache
+typedef Poco::ExpirationDecorator<std::string> ExpRespStream;
+
 
 class ProxyRequestHandler : public HTTPRequestHandler
 {
 public:
   using HTTPRequestHandler::HTTPRequestHandler;
 
+  ProxyRequestHandler(Poco::LRUCache<std::string, std::string>* cache);
   ProxyRequestHandler();
   ~ProxyRequestHandler();
 
@@ -33,5 +43,11 @@ private:
   ProxyRequestHandler(const HTTPRequestHandler&);
   ProxyRequestHandler& operator = (const ProxyRequestHandler&);
 
+  // Cache for the request handler (may have to move up hierarchy to
+  // have caching span multiple request or even connections)
+
+  //Poco::UniqueExpireCache<std::string, ExpRespStream> requestCache;
+  Poco::LRUCache<std::string, std::string>* requestCache;
+  
   static int count;
 };
