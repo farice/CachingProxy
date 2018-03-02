@@ -165,7 +165,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   Poco::Timestamp now;
   string fmt = "%w %b %f %H:%M:%S %Y";
   string timestamp_str = Poco::DateTimeFormatter::format(now, fmt);
-  LOG(INFO) << request_id << ": \"" << req.getMethod() << " " << req.getURI() << " " << req.getVersion()
+  LOG(INFO) << req.get("unique_id") << ": \"" << req.getMethod() << " " << req.getURI() << " " << req.getVersion()
   << "\" from " << " @ " << timestamp_str << std::endl;
 
   try

@@ -30,6 +30,7 @@ namespace Net {
 
 class DestinationRelay:public Poco::Runnable {
 	public:
+
 		DestinationRelay(HTTPServerSession& sess, StreamSocket& dest, string h): session(sess), destinationServer(dest), host(h) {}
 
 		virtual void run() {
@@ -82,6 +83,9 @@ class DestinationRelay:public Poco::Runnable {
 			std::string host;
 	};
 
+
+ProxyServerConnection::ProxyRequestHandler::request_id = 0;
+
 ProxyServerConnection::ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory):
 	TCPServerConnection(socket),
 	_pParams(pParams),
@@ -108,6 +112,7 @@ ProxyServerConnection::~ProxyServerConnection()
 
 void ProxyServerConnection::run()
 {
+
 	std::string server = _pParams->getSoftwareVersion();
 	HTTPServerSession session(socket(), _pParams);
 	int count = 0;
@@ -118,9 +123,11 @@ void ProxyServerConnection::run()
 	{
 		try
 		{
+
 			LOG(TRACE) << "Grabbing lock. from host=" << session.clientAddress().toString() << std::endl;
 			Poco::FastMutex::ScopedLock lock(_mutex);
 			LOG(TRACE) << "Grabbed lock. from host=" << session.clientAddress().toString() << std::endl;
+
 			if (!_stopped)
 			{
 
@@ -132,7 +139,10 @@ void ProxyServerConnection::run()
 
 				// MARK: - Past this point we are under the assumption that this is an uncencrypted HTTP Request
 				//LOG(TRACE) << "Creating request obj..." << std::endl;
+				// Increment unique request id for each new request created
 				HTTPServerRequestImpl request(response, session, _pParams);
+				request.add("unique_id", request_id);
+				request_id++;
 
 				LOG(TRACE) << "Sucessfully parsed request." << std::endl;
 

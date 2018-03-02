@@ -34,6 +34,7 @@ class Net_API ProxyServerConnection: public TCPServerConnection
 	/// connections.
 {
 public:
+	static int request_id;
 
 	ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory);
 		/// Creates the ProxyServerConnection.

@@ -53,5 +53,4 @@ private:
 
   static ProxyServerCache staticCache;
   static int count;
-  static int request_id;
 };
