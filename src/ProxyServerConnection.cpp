@@ -107,6 +107,7 @@ void ProxyServerConnection::run()
 							LOG(DEBUG) << "Potential CONNECT request for this session." << std::endl;
 							connect = true;
 							relayData(session, request.getHost());
+							continue;
 						}
 
 						LOG(DEBUG) << "responseStatus=" << response.getStatus() << std::endl;
@@ -160,12 +161,17 @@ void ProxyServerConnection::run()
 }
 
 void ProxyServerConnection::relayData(HTTPServerSession& session, std::string host) {
+
+	// 10 KB for each buffer
+	// This may create unrealistic memory overhead
+	// TODO - Consider
 	unsigned char clientBuffer[10000];
 	unsigned char destinationBuffer[10000];
 
 	bool isOpen = true;
 	// 1s timeout when polling
-	Poco::Timespan timeOut(1,0);
+	Poco::Timespan readTimeOut(0,500);
+	Poco::Timespan writeTimeOut(1,0);
 
 	StreamSocket destinationServer = StreamSocket();
 	SocketAddress addr = SocketAddress(host);
@@ -186,43 +192,47 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 	destinationServer.setBlocking(false);
 	//session.setKeepAlive(true);
 
-	LOG(DEBUG) << "Handling request as HTTPS data" << std::endl;
+	LOG(DEBUG) << "Handling request as HTTPS data. host=" << host << std::endl;
+
+	// TODO - Poll each address (client and destination) in separate threads so we can use poll to signal and wake efficiently
+	// For now, we just poll repeatedly and the overhead is seen clearly (compare HTTP vs. HTTPS load time)
 	while(isOpen){
 			int nClientBytes = -1;
 			int nDestinationBytes = -1;
 
 			try {
-				if (session.socket().poll(timeOut, Socket::SELECT_READ) == true) {
-					LOG(DEBUG) << "Session has more requests!" << endl  << flush;
+				if (session.socket().poll(readTimeOut, Socket::SELECT_READ) == true) {
+					LOG(DEBUG) << "Session has more requests! host=" << host << endl  << flush;
 					nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
 				}
-				if (destinationServer.poll(timeOut, Socket::SELECT_READ) == true) {
-					LOG(DEBUG) << "Destination server has more requests!" << endl  << flush;
-					nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
-				}
-				if (nClientBytes > 0 && destinationServer.poll(timeOut, Socket::SELECT_WRITE) == true) {
-					LOG(DEBUG) << "Number of bytes received from client=" << nClientBytes << endl << flush;
-					LOG(DEBUG) << "Sending bytes to destination server.." << std::endl;
+
+				if (nClientBytes > 0 && destinationServer.poll(writeTimeOut, Socket::SELECT_WRITE) == true) {
+					LOG(DEBUG) << "Number of bytes received from client=" << nClientBytes << " host=" << host << endl << flush;
+					LOG(DEBUG) << "Sending bytes to destination server.. host=" << host << std::endl;
 					destinationServer.sendBytes(clientBuffer, nClientBytes);
-					LOG(DEBUG) << "Sent bytes to destination server" << std::endl;
+					LOG(DEBUG) << "Sent bytes to destination server. host=" << host << std::endl;
 				}
 
-				if (nDestinationBytes > 0 && session.socket().poll(timeOut, Socket::SELECT_WRITE) == true) {
-					LOG(DEBUG) << "Number of bytes received from destination=" << nDestinationBytes << endl << flush;
-					LOG(DEBUG) << "Sending bytes to client server..." << std::endl;
+				if (destinationServer.poll(readTimeOut, Socket::SELECT_READ) == true) {
+					LOG(DEBUG) << "Destination server has more requests! host=" << host << endl  << flush;
+					nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
+				}
+				if (nDestinationBytes > 0 && session.socket().poll(writeTimeOut, Socket::SELECT_WRITE) == true) {
+					LOG(DEBUG) << "Number of bytes received from destination=" << nDestinationBytes << "host=" << host << endl << flush;
+					LOG(DEBUG) << "Sending bytes to client server... host=" << host << std::endl;
 					session.socket().sendBytes(destinationBuffer, nDestinationBytes);
-					LOG(DEBUG) << "Sent bytes to client server" << std::endl;
+					LOG(DEBUG) << "Sent bytes to client server. host=" << host << std::endl;
 					//Poco::StreamCopier::copyStream(destinationBuffer, out);
 				}
 			}
 			catch (Poco::Exception& exc) {
 					//Handle your network errors.
-					LOG(ERROR) << "Network error=" << exc.displayText() << endl;
+					LOG(ERROR) << "Network error=" << exc.displayText() << "host=" << host << endl;
 					isOpen = false;
 			}
 
 				if (nClientBytes==0 || nDestinationBytes == 0){
-						LOG(DEBUG) << "Client or destination closes connection!" << endl << flush;
+						LOG(DEBUG) << "Client or destination closes connection! host=" << host << endl << flush;
 						isOpen = false;
 				}
 
