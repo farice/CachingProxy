@@ -57,6 +57,8 @@ private:
 public:
 
   ProxyServerCache();
+  
+  //ProxyServerCache(size_t size);
 
   ~ProxyServerCache();
   

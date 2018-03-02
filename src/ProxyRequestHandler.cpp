@@ -34,26 +34,6 @@ using namespace Poco::Util;
 using namespace std;
 
 
-// Key will be a combination of fields within the URI
-string makeKey(Poco::URI& uri){
-  string key(uri.getHost());
-  key.append(to_string(uri.getPort()));
-  key.append(uri.getPathAndQuery());
-  LOG(DEBUG) << "Constructed key = " << key << endl;
-  return key;
-}
-
-
-string istreamToStr(istream& is){
-  string str;
-  char buff[4096];
-  while (is.read(buff, sizeof(buff))){
-    str.append(buff, sizeof(buff));
-  }
-  str.append(buff, is.gcount());
-  return str;
-}
-
 // Note we are only concerned here with the responses to get requests 
 pair<int,int> getCacheControl(HTTPServerResponse& resp){
   int freshness;
@@ -152,14 +132,23 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   // Once the request is constructed and before the request is sent
   // check the cache for that request
+   
+  string key = this->requestCache->makeKey(uri); // construct key from uri
   
-  
-  string key = makeKey(uri); // construct key from uri
-
-  
+  Poco::SharedPtr<CacheResponse> checkResponse = this->requestCache->get(key);
   // If it's in the cache, use the stored istream or data to fulfill the response
 
+  if (!checkResponse.isNull()){ // if the response is cached 
+    out << (*checkResponse).getResponseData().str();
+    LOG(DEBUG) << "{{{{++++ Responded with cached data brother #420BlazeItFag1v1MeOnRust360NoScopeOnly ++++}}}}"
+	       << endl;
+    return;
+  }
+  else{
+    LOG(DEBUG) << "The request is not in the cache" << endl;
+  }
 
+  
   // send request
   LOG(DEBUG) << "Creating session to " << uri.getHost() << std::endl;
   HTTPClientSession session(uri.getHost(), uri.getPort());
@@ -200,38 +189,32 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   if (proxy_resp.has("Cache-Control")) {
     LOG(DEBUG) << "Cache-Control=" << proxy_resp.get("Cache-control") << endl;
   }
-  //string respString(istreambuf_iterator<char>(is), {}); // works but is slow
-  //string respString = istreamToStr(is); // works but unsure of errors
 
-
+  /*
   this->requestCache->add("wombology",CacheResponse("Hello", 99.9, false));
   poco_assert(this->requestCache->size() == 1);
 
   Poco::SharedPtr<CacheResponse> element = this->requestCache->get("wombology");
   poco_assert((*element).getResponseData().str() == "Hello");
-  
+  */
   
   string responseVal;
-  //Poco::StreamCopier::copyToString(is, responseVal);
 
-  // store the shit then serve it 
+  // check if response is 200 - OK and store then serve it 
  
   ostringstream oss;
   oss << is.rdbuf();
-  responseVal = oss.str();
-  
-
-  // check that replying with a stored response is the same as feeding into the
-  // istream from the response 
-
-  
-  ostringstream toStore(oss.str());
+  //responseVal = oss.str();
+  this->requestCache->add(key, CacheResponse(oss.str(), 10, false));
+			  
+  //ostringstream toStore(oss.str());
   //  toStore << oss.str();
   //cout << "The value of toStore ostringstream = " << toStore.str() << endl;
-  
-  
 
-  out << oss.str();  //responseVal.data();
+ 
+  Poco::SharedPtr<CacheResponse> serveResponse = this->requestCache->get(key);  
+  out << (*serveResponse).getResponseData().str();
+  //out << oss.str(); 
   
   
   //LOG(DEBUG) << "The responseVal string  = " << toStore.str() << endl;

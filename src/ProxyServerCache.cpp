@@ -5,19 +5,26 @@ using namespace Poco;
 
 // constructor
 ProxyServerCache::ProxyServerCache(){
-  LOG(DEBUG) << "Yo, the cache is created..." << std::endl;
+  LOG(DEBUG) << "Yo, the cache is created with size = " << 1024 << std::endl;
 }
+
+// constructor (overloaded)
+/*
+ProxyServerCache::ProxyServerCache(size_t new_size):size(new_size){
+  LOG(DEBUG) << "Yo, the cache is created with size = " << this->size << std::endl;
+}
+*/
 
 // destructor
 ProxyServerCache::~ProxyServerCache(){
-  LOG(DEBUG) << "You, the cache has been destroyed... " << std::endl;
+  LOG(DEBUG) << "Yo, the cache has been destroyed... " << std::endl;
 }
 
 std::string ProxyServerCache::makeKey(Poco::URI& uri){
   std::string key(uri.getHost());
   key.append(std::to_string(uri.getPort()));
   key.append(uri.getPathAndQuery());
-  LOG(DEBUG) << "Constructed key = " << key << std::endl;
+  //LOG(DEBUG) << "Constructed key = " << key << std::endl;
   return key;
 }
 
