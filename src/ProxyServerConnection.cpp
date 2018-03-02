@@ -47,6 +47,7 @@ class DestinationRelay:public Poco::Runnable {
 			<< destinationServer.getSendBufferSize() << "-" << destinationServer.getSendTimeout().seconds() << endl;
 
 			while(isOpen){
+					//LOG(DEBUG) << "Polling dest for requests. host=" << host << endl;
 					int nDestinationBytes = -1;
 
 					try {
@@ -77,7 +78,7 @@ class DestinationRelay:public Poco::Runnable {
 
 		private:
 			HTTPServerSession& session;
-			StreamSocket destinationServer;
+			StreamSocket& destinationServer;
 			std::string host;
 	};
 
@@ -173,8 +174,8 @@ void ProxyServerConnection::run()
 
 							Poco::Net::DestinationRelay dRelay(session, destinationServer, host);
 							destThread.start(dRelay);
-							destThread.join();
 							relayClientData(session, destinationServer, host);
+							destThread.join();
 							continue;
 						}
 
@@ -243,6 +244,7 @@ void ProxyServerConnection::relayClientData(HTTPServerSession& session, StreamSo
 	<< session.socket().getSendBufferSize() << "-" << session.socket().getSendTimeout().seconds() << endl;
 
 	while(isOpen){
+			//LOG(DEBUG) << "Polling client for requests. host=" << host << endl;
 			int nClientBytes = -1;
 
 			try {
