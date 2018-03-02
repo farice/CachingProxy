@@ -227,25 +227,31 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   Poco::SharedPtr<string> element = this->requestCache->get("wombo");
   poco_assert(*element == "womboing");
 
-  /*
+  
   string responseVal;
+  //Poco::StreamCopier::copyToString(is, responseVal);
+  
+  
   ostringstream oss;
   oss << is.rdbuf();
   responseVal = oss.str();
 
+  //*/
 
-  out << responseVal.data();
-  */
+  //Poco::StreamCopier::copyStream(is, out);  
+  out << oss.str();  //responseVal.data();
   
-  //LOG(DEBUG) << "The responseVal string  = " << responseVal << endl;
+  
+  LOG(DEBUG) << "The responseVal string  = " << responseVal << endl;
  
 
   
   LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
   // Copy HTTP stream to app server response stream
-  Poco::StreamCopier::copyStream(is, out);
+  //Poco::StreamCopier::copyStreamUnbuffered(is, out);  
 
+  
   LOG(DEBUG) << "Requesting url=" << uri.getHost() << std::endl
     << "port=" << uri.getPort() << endl
     << "path=" << path << endl;
