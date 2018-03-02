@@ -19,8 +19,8 @@ private:
   double currentFreshness;
   bool expired;
   clock_t timeAdded_t;
-  Poco::Clock timeAdded;
-  // some kind of timer 
+  Poco::Clock timeAdded; // some kind of timer
+  std::string Etag;
 
 public:
 
@@ -28,7 +28,8 @@ public:
   CacheResponse(const CacheResponse& rhs); 
   
   CacheResponse(std::string respData, double maxFresh, bool exp);
-
+  CacheResponse(std::string respData, double maxFresh, bool exp, std::string Etag);
+  
   ~CacheResponse();
   
   void startExpire(double seconds);

@@ -39,6 +39,19 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp):
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
+CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp,
+			     std::string Etag):
+  responseData(respData),
+  maxFreshness(maxFresh),
+  expired(exp),
+  timeAdded_t(clock()),
+  timeAdded(Poco::Clock()),
+  Etag(Etag)
+{
+  //startExpire(this->maxFreshness); // start the expiration timer
+}
+
+
 CacheResponse::CacheResponse(const CacheResponse& rhs):responseData(rhs.responseData.str()),
 						       maxFreshness(rhs.maxFreshness),
 						       currentFreshness(rhs.currentFreshness),

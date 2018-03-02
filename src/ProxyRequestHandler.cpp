@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <sstream>
+#include <utility>
 
 #include <Poco/Net/HTTPServerConnectionFactory.h>
 #include <Poco/Net/SSLManager.h>
@@ -35,7 +36,7 @@ using namespace std;
 
 
 // Note we are only concerned here with the responses to get requests 
-pair<int,int> getCacheControl(HTTPServerResponse& resp){
+pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is trash
   int freshness;
   if (resp.has("Cache-Control")) {
 
@@ -107,13 +108,43 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){
   pair<int, int> ret(-10,-10);
   return ret; 
 }
-/*
-  Expiration time is determined by more than the cache-control header 
-  - may be easier to just return a struct with all the information the cache needs to
-  - consume 
 
+std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheControlHeaders(HTTPResponse& resp){
+  std::string name;
+  std::string value;
+  std::vector<std::pair<std::string,std::string> > headers;
+  NameValueCollection::ConstIterator it = resp.begin();
+  while (it != resp.end()){ // just cache-control part for now 
+    name = it->first;
+    if (name == "Cache-Control"){ 
+      value = it->second;
+      headers.push_back(std::make_pair(name, value));
+    }
+    ++it;
+  }
+  for (int i = 0; i < headers.size(); i++){
+    cout << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
+  }
+  return headers;
+}
 
-*/
+std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getHeaders(HTTPResponse& resp){
+  std::string name;
+  std::string value;
+  std::vector<std::pair<std::string,std::string> > headers;
+  NameValueCollection::ConstIterator it = resp.begin();
+  while (it != resp.end()){
+    name = it->first;
+    value = it->second;
+    headers.push_back(std::make_pair(name, value));
+    ++it;
+  }
+  for (int i = 0; i < headers.size(); i++){
+    cout << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
+  }
+  return headers;
+}
+
 
 void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
 {
@@ -188,10 +219,14 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       // create istream for session response
       istream &is = session.receiveResponse(proxy_resp);
 
+      /*
       if (proxy_resp.has("Cache-Control")) {
 	LOG(DEBUG) << "Cache-Control=" << proxy_resp.get("Cache-control") << endl;
       }
+      */
 
+      std::vector<std::pair<std::string,std::string> > headers = getHeaders(proxy_resp);
+      
       /*
 	this->requestCache->add("wombology",CacheResponse("Hello", 99.9, false));
 	poco_assert(this->requestCache->size() == 1);
