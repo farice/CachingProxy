@@ -169,10 +169,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
 
   // If it's in the cache, use the stored istream or data to fulfill the response
-
-
   // send request
-  LOG(DEBUG) << "Creating session to " << uri.getHost() << std::endl;
+  LOG(DEBUG) << "Creating proxy session to " << uri.getHost() << std::endl;
   HTTPClientSession session(uri.getHost(), uri.getPort());
   HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
 
@@ -194,13 +192,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     std::ostream& opost = session.sendRequest(proxy_req);
 
     HTMLForm htmlBody(req, req.stream());
-
     //std::istream &ipost = req.stream();
     //Poco::StreamCopier::copyStream(ipost, opost);
     htmlBody.write(opost);
-
-    //proxy_req.write(std::cout);
-
     LOG(DEBUG) << "POST body=";
     htmlBody.write(LOG(DEBUG));
     LOG(DEBUG) << endl;
@@ -242,10 +236,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   out << responseVal.data();
   */
 
-  //LOG(DEBUG) << "The responseVal string  = " << responseVal << endl;
-
-
-
   LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
   LOG(DEBUG) << "Requesting url=" << uri.getHost() << std::endl
@@ -256,20 +246,18 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   resp.setContentType(proxy_resp.getContentType());
 
   // Copy over cookies from proxy's response to client response
-  LOG(DEBUG) << "Getting cookies from destination response..." << endl;
   std::vector<HTTPCookie> respCookies;
   proxy_resp.getCookies(respCookies);
 
   for (int i=0 ; i < respCookies.size(); i++) {
     HTTPCookie cookie(respCookies[i]);
-    LOG(DEBUG) << "adding cookie with name=" << cookie.getName() << endl;
     resp.addCookie(cookie);
   }
 
   std::ostream& out = resp.send();
   // Copy HTTP stream to app server response stream
   Poco::StreamCopier::copyStream(is, out);
-  
+
   }
   catch (Poco::Exception &ex)
   {
@@ -285,12 +273,12 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 }
 
 ProxyRequestHandler::ProxyRequestHandler():requestCache(nullptr) {
-  LOG(DEBUG) << "------ Created Proxy Request Handler ------" << endl;
+  //LOG(DEBUG) << "------ Created Proxy Request Handler ------" << endl;
 
 }
 
 ProxyRequestHandler::ProxyRequestHandler(Poco::LRUCache<std::string, std::string>* cache):requestCache(cache){
-  LOG(DEBUG) << "------ Created Proxy Request Handler with cache ------" << endl;
+  //LOG(DEBUG) << "------ Created Proxy Request Handler with cache ------" << endl;
 
 }
 
