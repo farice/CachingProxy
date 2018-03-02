@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <cstring>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -139,18 +138,9 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){
 void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
 {
 
-  // Only using HTTP requests (no danger of HTTPS)
-  
-  std::ostream& out = resp.send();
+  // Only using HTTP requests (no danger of HTTPS)  
+  std::ostream& out = resp.send(); // client stream for receiving data
 
-  // its the response that has cache control, not request
-  /*
-  LOG(DEBUG) << "Plain request" << std::endl;
-  if (req.has("Cache-Control")) {
-    LOG(DEBUG) << "Cache-Control=" << req.get("Cache-control") << endl;
-  }
-  */
-  
   try
   {
   // prepare session
@@ -165,13 +155,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   
   
   string key = makeKey(uri); // construct key from uri
-
-  /*
-  this->requestCache.add(test, ExpRespStream("testResponseValue", 10000));
-  //this->requestCache.add(uri, ExpRespStream("testResponseValue", 10000));
-  
-  poco_assert(this->requestCache.size() == 1);
-  */
 
   
   // If it's in the cache, use the stored istream or data to fulfill the response
@@ -219,17 +202,21 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   }
   //string respString(istreambuf_iterator<char>(is), {}); // works but is slow
   //string respString = istreamToStr(is); // works but unsure of errors
-  
+
+  /*
   this->requestCache->add("wombo","womboing");
-  this->requestCache->add("wombology","it's first grade");
+  */
+  this->requestCache->add("wombology",CacheResponse("Hello", 99.9, false));
   poco_assert(this->requestCache->size() == 2);
 
-  Poco::SharedPtr<string> element = this->requestCache->get("wombo");
-  poco_assert(*element == "womboing");
-
+  Poco::SharedPtr<CacheResponse> element = this->requestCache->get("wombology");
+  //poco_assert(*element == "womboing");
+  
   
   string responseVal;
   //Poco::StreamCopier::copyToString(is, responseVal);
+
+  // store the shit then serve it 
   
   
   ostringstream oss;
@@ -238,14 +225,11 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   //*/
 
-  //Poco::StreamCopier::copyStream(is, out);  
   out << oss.str();  //responseVal.data();
   
   
   LOG(DEBUG) << "The responseVal string  = " << responseVal << endl;
- 
-
-  
+   
   LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
   // Copy HTTP stream to app server response stream
@@ -277,7 +261,7 @@ ProxyRequestHandler::ProxyRequestHandler():requestCache(nullptr) {
   
 }
 
-ProxyRequestHandler::ProxyRequestHandler(Poco::LRUCache<std::string, std::string>* cache):requestCache(cache){
+ProxyRequestHandler::ProxyRequestHandler(ProxyServerCache* cache):requestCache(cache){
   LOG(DEBUG) << "------ Created Proxy Request Handler with cache ------" << endl;
   
 }
