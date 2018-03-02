@@ -75,13 +75,13 @@ protected:
     TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), tp, ServerSocket(12345), new HTTPServerParams);
 
     s.start();
-    LOG(TRACE) << endl << "Server started" << endl;
+    LOG(INFO) << endl << "Server started" << endl;
 
 		LOG(TRACE) << endl << "Max threads=" << s.maxThreads() << endl;
 
     waitForTerminationRequest();  // wait for CTRL-C or kill
 
-    LOG(TRACE) << endl << "Shutting down..." << endl;
+    LOG(INFO) << endl << "Shutting down..." << endl;
     s.stop();
 
     return Application::EXIT_OK;
