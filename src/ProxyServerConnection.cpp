@@ -138,10 +138,10 @@ void ProxyServerConnection::run()
 				string host(request.getHost());
 				request.add("ip_addr", session.clientAddress().toString());
 
-				Poco::FastMutex::FastMutex lock(_requestIdMutex);
+				_requestIdMutex.lock();
 				request.add("unique_id", std::to_string(request_id));
 				request_id++;
-				Poco::FastMutex::FastMutex unlock(_requestIdMutex);
+				_requestIdMutex.unlock();
 
 				LOG(TRACE) << "Sucessfully parsed request." << std::endl;
 				count++;
@@ -189,7 +189,7 @@ void ProxyServerConnection::run()
  							destThread.join();
 							LOG(TRACE) << "Dest relay thread exited" << std::endl;
 
-							LOG(INFO) << to_string(request_id) << ": " << "Tunnel closed" << std::endl;
+							LOG(INFO) << request.get("unique_id") << ": " << "Tunnel closed" << std::endl;
 							continue;
 						}
 
