@@ -149,8 +149,7 @@ std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheCo
 // must-revalidate makes you re-validate a cached response if it is stale
 // no-cache makes you re-validate a cached response everytime
 bool ProxyRequestHandler::isCacheableResp(HTTPResponse& resp){
-  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp\
-												);
+  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp);
   for (int i = 0; i < cacheControlHeaders.size(); i++){
     if ((cacheControlHeaders[i].second == "no-store") ||
 	(cacheControlHeaders[i].second == "private")){
@@ -158,6 +157,76 @@ bool ProxyRequestHandler::isCacheableResp(HTTPResponse& resp){
     }
   }
   return true;
+}
+
+
+bool ProxyRequestHandler::hasNoCacheDirective(HTTPResponse& resp){
+  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp);
+  for (int i = 0; i < cacheControlHeaders.size(); i++){
+    if (cacheControlHeaders[i].second == "no-cache"){
+      return true;
+    }
+  }
+  return false;
+}
+
+// string NO_ETAG indicates no strong validator found 
+std::string ProxyRequestHandler::getEtag(HTTPResponse& resp){
+  NameValueCollection::ConstIterator it = resp.begin();
+  while (it != resp.end()){
+    if (it->first == "ETag"){
+      return it->second;
+    }
+    ++it;
+  }
+  return "NO_ETAG";
+} 
+
+
+// -1 indicates no max-age directive found 
+double ProxyRequestHandler::getMaxAge(HTTPResponse& resp){
+  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp);
+  for (int i = 0; i < cacheControlHeaders.size(); i++){
+    std::string current = cacheControlHeaders[i].second;
+    if (current.find("max-age=") != string::npos){
+      return atof((current.substr(current.find("=") + 1, string::npos)).c_str());
+    }
+  }
+  return -1;
+} 
+
+
+/*
+std::string ProxyRequestHandler::getDate(HTTPResponse& resp){
+  // can get data directly from request with poco library function
+  // maybe just store it as to_string? doesn't really matter 
+
+}
+*/
+
+// string NO_EXPIRE indicates no expiration header was found 
+std::string ProxyRequestHandler::getExpires(HTTPResponse& resp){
+  NameValueCollection::ConstIterator it = resp.begin();
+  while (it != resp.end()){
+    if (it->first == "Expires"){
+      return it->second;
+    }
+    ++it;
+  }
+  return "NO_EXPIRE";
+} 
+
+
+
+std::string ProxyRequestHandler::getLastModified(HTTPResponse& resp){
+  NameValueCollection::ConstIterator it = resp.begin();
+  while (it != resp.end()){
+    if (it->first == "Last-Modified"){
+      return it->second;
+    }
+    ++it;
+  }
+  return "NO_LAST_MODIFY";  
 }
 
 
@@ -307,6 +376,18 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 	  // filter out 'no-store' and 'private' responses
 	  LOG(TRACE) << "The response is cachable " << endl;
 
+	  // now parse to find the Etag, lastModified, and other header fields
+	  
+	  
+	  if (hasNoCacheDirective(proxy_resp)){
+	    LOG(TRACE) << "The response is 'no-cache', must always be validated" << endl;
+	    this->staticCache.add(key,CacheResponse(oss.str(), -1, true, true));
+	  }
+	  else{
+	    // is cacheable and has an expiration
+
+	  }
+	  
         // determine expiration
 
         // testing basic function for now
