@@ -24,6 +24,7 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/Exception.h>
+#include <Poco/ThreadPool.h>
 
 using namespace Poco::Net;
 using namespace Poco::Util;
@@ -68,10 +69,15 @@ protected:
   int main(const vector<string> &)
   {
     //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(8080), new HTTPServerParams);
-    TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), ServerSocket(8080), new HTTPServerParams);
+
+		// minCapacity, maxCapacity, idle timeOut, initial stack size
+		Poco::ThreadPool tp(128, 2048, 60, 0);
+    TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), tp, ServerSocket(8080), new HTTPServerParams);
 
     s.start();
     LOG(DEBUG) << endl << "Server started" << endl;
+
+		LOG(DEBUG) << endl << "Max threads=" << s.maxThreads() << endl;
 
     waitForTerminationRequest();  // wait for CTRL-C or kill
 

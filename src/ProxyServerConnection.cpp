@@ -159,11 +159,11 @@ void ProxyServerConnection::run()
 
 void ProxyServerConnection::relayData(HTTPServerSession& session, std::string host) {
 
-	// 10 KB for each buffer
+	// 64 KB for client, 128 KB for destination (assumption is destination will pass more data than client)
 	// This may create unrealistic memory overhead
 	// TODO - Consider
-	unsigned char clientBuffer[10000];
-	unsigned char destinationBuffer[10000];
+	unsigned char clientBuffer[65336];
+	unsigned char destinationBuffer[131072];
 
 	bool isOpen = true;
 	// 1s timeout when polling
