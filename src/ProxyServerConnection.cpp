@@ -94,7 +94,7 @@ void ProxyServerConnection::run()
 					std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
 					if (pHandler.get())
 					{
-					  if (request.getExpectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
+					  if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
 							response.sendContinue();
 
 						// This is an HTTP request so set httpData = true
@@ -167,8 +167,9 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 
 	bool isOpen = true;
 	// 1s timeout when polling
-	Poco::Timespan readTimeOut(0,500);
-	Poco::Timespan writeTimeOut(1,0);
+
+	Poco::Timespan readPollTimeOut(0,500);
+	Poco::Timespan writePollTimeOut(1,0);
 
 	StreamSocket destinationServer = StreamSocket();
 	SocketAddress addr = SocketAddress(host);
@@ -198,23 +199,23 @@ void ProxyServerConnection::relayData(HTTPServerSession& session, std::string ho
 			int nDestinationBytes = -1;
 
 			try {
-				if (session.socket().poll(readTimeOut, Socket::SELECT_READ) == true) {
+				if (session.socket().poll(readPollTimeOut, Socket::SELECT_READ) == true) {
 					LOG(DEBUG) << "Session has more requests! host=" << host << endl  << flush;
 					nClientBytes = session.socket().receiveBytes(clientBuffer, sizeof(clientBuffer));
 				}
 
-				if (nClientBytes > 0 && destinationServer.poll(writeTimeOut, Socket::SELECT_WRITE) == true) {
+				if (nClientBytes > 0 && destinationServer.poll(writePollTimeOut, Socket::SELECT_WRITE) == true) {
 					LOG(DEBUG) << "Number of bytes received from client=" << nClientBytes << " host=" << host << endl << flush;
 					LOG(DEBUG) << "Sending bytes to destination server.. host=" << host << std::endl;
 					destinationServer.sendBytes(clientBuffer, nClientBytes);
 					LOG(DEBUG) << "Sent bytes to destination server. host=" << host << std::endl;
 				}
 
-				if (destinationServer.poll(readTimeOut, Socket::SELECT_READ) == true) {
+				if (destinationServer.poll(readPollTimeOut, Socket::SELECT_READ) == true) {
 					LOG(DEBUG) << "Destination server has more requests! host=" << host << endl  << flush;
 					nDestinationBytes = destinationServer.receiveBytes(destinationBuffer, sizeof(destinationBuffer));
 				}
-				if (nDestinationBytes > 0 && session.socket().poll(writeTimeOut, Socket::SELECT_WRITE) == true) {
+				if (nDestinationBytes > 0 && session.socket().poll(writePollTimeOut, Socket::SELECT_WRITE) == true) {
 					LOG(DEBUG) << "Number of bytes received from destination=" << nDestinationBytes << "host=" << host << endl << flush;
 					LOG(DEBUG) << "Sending bytes to client server... host=" << host << std::endl;
 					session.socket().sendBytes(destinationBuffer, nDestinationBytes);
