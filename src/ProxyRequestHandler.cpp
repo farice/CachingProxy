@@ -117,7 +117,7 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is tra
     - may be easier to just return a struct with all the information the cache needs to
     - consume
     */
-    
+
 std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheControlHeaders(HTTPResponse& resp){
   std::string name;
   std::string value;
@@ -174,28 +174,28 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       // Once the request is constructed and before the request is sent
       // check the cache for that request
 
-      //string key = this->requestCache->makeKey(uri); // construct key from uri
-      string key = this->staticCache.makeKey(uri); // construct key from uri
+      //string cacheKey = this->requestCache->makeKey(uri); // construct key from uri
+      string cacheKey = this->staticCache.makeKey(uri); // construct key from uri
 
       //Poco::SharedPtr<CacheResponse> checkResponse = this->requestCache->get(key);
-      Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
+      Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(cacheKey);
       // If it's in the cache, use the stored istream or data to fulfill the response
 
       if (!checkResponse.isNull()){ // if the response is cached
-	out << (*checkResponse).getResponseData().str();
-	LOG(DEBUG) << "{{{{++++ Responded with cached data brother ++++}}}}"
-		   << endl;
-	return;
+	       out << (*checkResponse).getResponseData().str();
+	       LOG(DEBUG) << "{{{{++++ Responded with cached data brother ++++}}}}"
+		     << endl;
+	      return;
       }
       else{
-	LOG(DEBUG) << "The request is not in the cache" << endl;
+	       LOG(DEBUG) << "The request is not in the cache" << endl;
       }
 
   // Once the request is constructed and before the request is sent
   // check the cache for that request
 
 
-  string key = makeKey(uri); // construct key from uri
+  string cacheKey = makeKey(uri); // construct key from uri
 
   /*
   this->requestCache.add(test, ExpRespStream("testResponseValue", 10000));
