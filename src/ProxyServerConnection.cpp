@@ -24,6 +24,7 @@
 #include <memory>
 #include <iostream>
 #include <Poco/Thread.h>
+#include <Poco/Mutex.h>
 
 namespace Poco {
 namespace Net {
@@ -84,7 +85,7 @@ class DestinationRelay:public Poco::Runnable {
 	};
 
 
-ProxyServerConnection::ProxyRequestHandler::request_id = 0;
+int ProxyServerConnection::request_id = 0;
 
 ProxyServerConnection::ProxyServerConnection(const StreamSocket& socket, HTTPServerParams::Ptr pParams, ProxyRequestHandlerFactory::Ptr pFactory):
 	TCPServerConnection(socket),
@@ -130,21 +131,18 @@ void ProxyServerConnection::run()
 
 			if (!_stopped)
 			{
-
-				count++;
-				LOG(TRACE) << "Request count=" <<  count << "from host=" << session.clientAddress().toString() << std::endl;
-
-				//LOG(TRACE) << "Creating response obj..." << std::endl;
 				HTTPServerResponseImpl response(session);
 
-				// MARK: - Past this point we are under the assumption that this is an uncencrypted HTTP Request
-				//LOG(TRACE) << "Creating request obj..." << std::endl;
 				// Increment unique request id for each new request created
 				HTTPServerRequestImpl request(response, session, _pParams);
-				request.add("unique_id", request_id);
+				string host(request.getHost());
+				request.add("unique_id", std::to_string(request_id));
+				request.add("ip_addr", session.clientAddress().toString());
 				request_id++;
 
 				LOG(TRACE) << "Sucessfully parsed request." << std::endl;
+				count++;
+				LOG(TRACE) << "Request count=" <<  count << "from host=" << host << std::endl;
 
 				Poco::Timestamp now;
 				response.setDate(now);
@@ -161,15 +159,14 @@ void ProxyServerConnection::run()
 					  if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
 							response.sendContinue();
 
-						// This is an HTTP request so set httpData = true
 						if (request.getMethod() != "CONNECT") {
+							// HTTP so pass to our ProxyRequestHandler (controls GET, POST, and cache logic)
 							pHandler->handleRequest(request, response);
 						} else {
 							LOG(TRACE) << "Potential CONNECT request for this session." << std::endl;
 							connect = true;
 
 							StreamSocket destinationServer = StreamSocket();
-							string host(request.getHost());
 							SocketAddress addr = SocketAddress(host);
 							destinationServer.connect(addr);
 
@@ -188,6 +185,8 @@ void ProxyServerConnection::run()
 							LOG(TRACE) << "Waiting for dest relay thread to exit..." << std::endl;
  							destThread.join();
 							LOG(TRACE) << "Dest relay thread exited" << std::endl;
+
+							LOG(INFO) << to_string(request_id) << ": " << "Tunnel closed" << std::endl;
 							continue;
 						}
 

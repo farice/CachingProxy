@@ -1,3 +1,4 @@
+
 #include "logging/aixlog.hpp"
 #include "ProxyRequestHandler.h"
 
@@ -165,8 +166,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   Poco::Timestamp now;
   string fmt = "%w %b %f %H:%M:%S %Y";
   string timestamp_str = Poco::DateTimeFormatter::format(now, fmt);
-  LOG(INFO) << req.get("unique_id") << ": \"" << req.getMethod() << " " << req.getURI() << " " << req.getVersion()
-  << "\" from " << " @ " << timestamp_str << std::endl;
+  LOG(INFO) << req.get("unique_id") << ": \"" << req.getMethod() << " " << req.getHost() << " " << req.getVersion()
+  << "\" from " << req.get("ip_addr") << " @ " << timestamp_str << std::endl;
 
   try
     {
@@ -209,9 +210,12 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     //std::istream &ipost = req.stream();
     //Poco::StreamCopier::copyStream(ipost, opost);
     htmlBody.write(opost);
+
+    /*
     LOG(TRACE) << "POST body=";
     htmlBody.write(LOG(TRACE));
     LOG(TRACE) << endl;
+    */
 
   } else { // GET / other (per requirements this is the only other HTTP request we are concerned with)
 
