@@ -28,6 +28,8 @@
 #include <Poco/Net/HTTPServerSession.h>
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/Exception.h>
+#include <Poco/Net/HTMLForm.h>
+#include <Poco/Net/HTTPCookie.h>
 
 
 using namespace Poco::Net;
@@ -138,18 +140,10 @@ pair<int,int> getCacheControl(HTTPServerResponse& resp){
 
 void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
 {
-
-  // Only using HTTP requests (no danger of HTTPS)
-
-  std::ostream& out = resp.send();
-
-  // its the response that has cache control, not request
-  /*
-  LOG(DEBUG) << "Plain request" << std::endl;
-  if (req.has("Cache-Control")) {
-    LOG(DEBUG) << "Cache-Control=" << req.get("Cache-control") << endl;
-  }
-  */
+  /************************************************/
+  // Only using HTTP requests (no danger of HTTPS) //
+  /************************************************/
+  LOG(DEBUG) << "HTTP request" << std::endl;
 
   try
   {
@@ -185,24 +179,31 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   // POST only
   if(proxy_req.getMethod() == "POST") {
     LOG(DEBUG) << "POST request to=" << uri.getHost() << std::endl;
-    proxy_req.setContentType("application/x-www-form-urlencoded\r\n");
+    proxy_req.setContentType("application/x-www-form-urlencoded");
     proxy_req.setKeepAlive(true);
     proxy_req.setContentLength(req.getContentLength());
 
 
     LOG(DEBUG) << "Post content length=" << proxy_req.getContentLength() << std::endl;
 
-    Poco::Net::NameValueCollection cookies;
-    req.getCookies(cookies);
-    proxy_req.setCookies(cookies);
+    // Copy over cookies from client's request to proxy request
+    Poco::Net::NameValueCollection postCookies;
+    req.getCookies(postCookies);
+    proxy_req.setCookies(postCookies);
 
-    string body("csrfmiddlewaretoken=qtHiu8G3zxkIMWG3tSe2paIvrpNYxSxmTCB1AaMZoCsmF8t8mLsN3rGq2Po5Hf8l&username=farice&password=farice23&next=");
-    //LOG(DEBUG) << "Writing body to POST stream=" << body << endl;
     std::ostream& opost = session.sendRequest(proxy_req);
-    std::istream &ipost = req.stream();
-    Poco::StreamCopier::copyStream(ipost, opost);
-    
+
+    HTMLForm htmlBody(req, req.stream());
+
+    //std::istream &ipost = req.stream();
+    //Poco::StreamCopier::copyStream(ipost, opost);
+    htmlBody.write(opost);
+
     //proxy_req.write(std::cout);
+
+    LOG(DEBUG) << "POST body=";
+    htmlBody.write(LOG(DEBUG));
+    LOG(DEBUG) << endl;
 
   } else { // GET / other (per requirements this is the only other HTTP request we are concerned with)
 
@@ -247,15 +248,28 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
   LOG(DEBUG) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason() << std::endl;
 
-  // Copy HTTP stream to app server response stream
-  Poco::StreamCopier::copyStream(is, out);
-
   LOG(DEBUG) << "Requesting url=" << uri.getHost() << std::endl
     << "port=" << uri.getPort() << endl
     << "path=" << path << endl;
 
   resp.setStatus(proxy_resp.getStatus());
   resp.setContentType(proxy_resp.getContentType());
+
+  // Copy over cookies from proxy's response to client response
+  LOG(DEBUG) << "Getting cookies from destination response..." << endl;
+  std::vector<HTTPCookie> respCookies;
+  proxy_resp.getCookies(respCookies);
+
+  for (int i=0 ; i < respCookies.size(); i++) {
+    HTTPCookie cookie(respCookies[i]);
+    LOG(DEBUG) << "adding cookie with name=" << cookie.getName() << endl;
+    resp.addCookie(cookie);
+  }
+
+  std::ostream& out = resp.send();
+  // Copy HTTP stream to app server response stream
+  Poco::StreamCopier::copyStream(is, out);
+  
   }
   catch (Poco::Exception &ex)
   {
