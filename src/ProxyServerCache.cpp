@@ -34,9 +34,9 @@ void ProxyServerCache::copyResponseObj(const Poco::Net::HTTPResponse &fromResp, 
   // Copy over headers
   Poco::Net::NameValueCollection::ConstIterator i = fromResp.begin();
   while(i!=fromResp.end()){
-      LOG(DEBUG) << "Copying over header=" <<  i->first << std::endl;
+      //LOG(DEBUG) << "Copying over header=" <<  i->first << std::endl;
       toResp.add(i->first, i->second);
-      LOG(DEBUG) << "Copying over value=" <<  toResp.get(i->first) << std::endl;
+      //LOG(DEBUG) << "Copying over value=" <<  toResp.get(i->first) << std::endl;
       ++i;
   }
 
@@ -57,9 +57,9 @@ void ProxyServerCache::copyResponseObj(const Poco::Net::HTTPResponse &fromResp, 
   // Copy over headers
   Poco::Net::NameValueCollection::ConstIterator i = fromResp.begin();
   while(i!=fromResp.end()){
-      LOG(DEBUG) << "Copying over header=" <<  i->first << std::endl;
+      //LOG(DEBUG) << "Copying over header=" <<  i->first << std::endl;
       toResp.add(i->first, i->second);
-      LOG(DEBUG) << "Copying over value=" <<  toResp.get(i->first) << std::endl;
+      //LOG(DEBUG) << "Copying over value=" <<  toResp.get(i->first) << std::endl;
       ++i;
   }
 
@@ -82,9 +82,9 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
   Poco::Timestamp ts;
   timeAdded = ts;
 
-  LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
+  //LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(response, responseObj);
-  LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
+  //LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
 
   //startExpire(this->maxFreshness); // start the expiration timer
 }
