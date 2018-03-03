@@ -2,7 +2,7 @@
 #include "ProxyServerCache.h"
 
 using namespace Poco;
-
+using namespace std;
 
 // constructor
 ProxyServerCache::ProxyServerCache(){
@@ -89,7 +89,7 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
     // no need to check here for no-store or private, already filtered
 
     if (cacheControl.find("max-age=") != string::npos){
-      this->maxFreshness = atof((current.substr(current.find("=") + 1, string::npos)).c_str());
+      this->maxFreshness = atof((cacheControl.substr(cacheControl.find("=") + 1, string::npos)).c_str());
       LOG(TRACE) << "freshness from max-age = " << this->maxFreshness << endl;
     }
     else{
@@ -98,9 +98,9 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
       // determine freshness lifetime from Expires - Date, or (Date - Last-Modified)/10
     }
   }
-  response.has("ETag") ? this->Etag = response.get("ETag") : this->Etag("");
+  response.has("ETag") ? this->Etag = response.get("ETag") : this->Etag = "";
   response.has("Last-Modified") ? this->last_modified = response.get("Last-Modified") :
-    this->last_modified("");
+    this->last_modified = "";
   
   
   //LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
