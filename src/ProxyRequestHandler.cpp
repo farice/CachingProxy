@@ -227,7 +227,7 @@ this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
   << "port=" << uri.getPort() << endl
   << "path=" << path << endl;
 
-  LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+  LOG(INFO) << req.get("unique_id") << ": " << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   std::ostream& out = resp.send();
 
   // Copy HTTP stream to app server response stream
@@ -303,7 +303,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
       ProxyServerCache::copyResponseObj(proxy_resp, resp);
 
-      LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+      LOG(INFO) << req.get("unique_id") << ": " << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
 
       std::ostream& out = resp.send();
       // Copy HTTP stream to app server response stream
@@ -338,7 +338,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
 
-          LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+          LOG(INFO) << req.get("unique_id") << ": " << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
 
           LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
           return;
@@ -362,7 +362,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     << ex.what() << ": " << ex.message() << endl;
 
     resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
-    LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+    LOG(INFO) << req.get("unique_id") << ": " << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   }
 
 
