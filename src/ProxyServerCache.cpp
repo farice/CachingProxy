@@ -89,9 +89,8 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
-CacheResponse::CacheResponse(const CacheResponse& rhs)
+CacheResponse::CacheResponse(const CacheResponse& rhs) :responseData(rhs.responseData.str())
 {
-  responseData << rhs.responseData.rdbuf();
 
   timeAdded = rhs.timeAdded;
 
