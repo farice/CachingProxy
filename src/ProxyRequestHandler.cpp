@@ -298,7 +298,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       HTTPResponse proxy_resp;
       // create istream for session response
       istream &is = session.receiveResponse(proxy_resp);
-      LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
+      LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << " " << proxy_resp.getStatus() << " " << proxy_resp.getReason()
       << "\" from " << uri.getHost() << std::endl;
 
       ProxyServerCache::copyResponseObj(proxy_resp, resp);
@@ -326,10 +326,10 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
-            LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, requires validation" << endl;
+            LOG(INFO) << req.get("unique_id") << ": " << "in cache, requires validation" << endl;
             updateCacheItem(uri, path, req, resp, checkResponse);
           } else {
-            LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, valid" << endl;
+            LOG(INFO) << req.get("unique_id") << ": " << "in cache, valid" << endl;
           }
 
           // writes to resp
