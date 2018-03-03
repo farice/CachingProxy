@@ -19,6 +19,8 @@ class CacheResponse{
 private:
   //std::string responseData;
   std::ostringstream responseData;
+
+
   Poco::Net::HTTPResponse responseObj;
   double maxFreshness;
   //double currentFreshness;
@@ -33,7 +35,7 @@ public:
   //CacheResponse(std::string respData, double maxFresh, bool exp);
   CacheResponse(const CacheResponse& rhs);
 
-  CacheResponse(Poco::Net::HTTPResponse& response, std::string respData);
+  CacheResponse(const Poco::Net::HTTPResponse& response, std::string respData);
 
   CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache);
   CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache, std::string Etag);
@@ -71,8 +73,8 @@ private:
 
 
 public:
-  static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp);
-  static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp);
+  static void copyResponseObj(const Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp);
+  static void copyResponseObj(const Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp);
 
   ProxyServerCache();
 

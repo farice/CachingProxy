@@ -30,11 +30,13 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
 }
 
 
-void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
+void ProxyServerCache::copyResponseObj(const Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
   // Copy over headers
   Poco::Net::NameValueCollection::ConstIterator i = fromResp.begin();
   while(i!=fromResp.end()){
+      LOG(DEBUG) << "Copying over header=" <<  i->first << std::endl;
       toResp.add(i->first, i->second);
+      LOG(DEBUG) << "Copying over value=" <<  toResp.get(i->first) << std::endl;
       ++i;
   }
 
@@ -51,11 +53,13 @@ void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::
   toResp.setContentType(fromResp.getContentType());
 }
 
-void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp) {
+void ProxyServerCache::copyResponseObj(const Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp) {
   // Copy over headers
   Poco::Net::NameValueCollection::ConstIterator i = fromResp.begin();
   while(i!=fromResp.end()){
+      LOG(DEBUG) << "Copying over header=" <<  i->first << std::endl;
       toResp.add(i->first, i->second);
+      LOG(DEBUG) << "Copying over value=" <<  toResp.get(i->first) << std::endl;
       ++i;
   }
 
@@ -72,16 +76,32 @@ void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::
   toResp.setContentType(fromResp.getContentType());
 }
 
-CacheResponse::CacheResponse(Poco::Net::HTTPResponse& response, std::string respData):
+CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::string respData):
   responseData(respData)
 {
   Poco::Timestamp ts;
   timeAdded = ts;
-  ProxyServerCache::copyResponseObj(response, responseObj);
 
-  LOG(DEBUG) << "copied over" << responseObj.getContentType();
+  LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
+  ProxyServerCache::copyResponseObj(response, responseObj);
+  LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
+
   //startExpire(this->maxFreshness); // start the expiration timer
 }
+
+CacheResponse::CacheResponse(const CacheResponse& rhs)
+{
+  responseData << rhs.responseData.rdbuf();
+
+  timeAdded = rhs.timeAdded;
+
+  LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
+  ProxyServerCache::copyResponseObj(rhs.responseObj, this->responseObj);
+  LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
+
+  //startExpire(this->maxFreshness); // start the expiration timer
+}
+
 
 CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache):
   responseData(respData),
@@ -112,19 +132,6 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bo
   Poco::Timestamp ts;
   timeAdded = ts;
   //startExpire(this->maxFreshness); // start the expiration timer
-}
-
-
-
-CacheResponse::CacheResponse(const CacheResponse& rhs):responseData(rhs.responseData.str()),
-						       maxFreshness(rhs.maxFreshness),
-						       expired(rhs.expired),
-						       isNoCache(rhs.isNoCache),
-						       timeAdded(rhs.timeAdded),
-						       Etag(rhs.Etag),
-						       last_modified(rhs.last_modified)
-{
-
 }
 
 CacheResponse::~CacheResponse(){}
@@ -173,7 +180,8 @@ void CacheResponse::setExpired(bool exp){
 
   void CacheResponse::getResponse(Poco::Net::HTTPResponse& writeToResponse) {
   // copies cookies, headers, etc
-  ProxyServerCache::copyResponseObj(this->responseObj, writeToResponse);
+  LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
+  ProxyServerCache::copyResponseObj(responseObj, writeToResponse);
 }
 
 /*

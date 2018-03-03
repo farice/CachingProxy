@@ -334,6 +334,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
           }
 
           // writes to resp
+          LOG(DEBUG) << "Copying back cached headers" << endl;
           (*checkResponse).getResponse(resp);
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
