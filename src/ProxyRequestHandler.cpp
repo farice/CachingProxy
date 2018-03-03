@@ -280,8 +280,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       req.getCookies(postCookies);
       proxy_req.setCookies(postCookies);
 
-      LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
+      LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << uri.getHost() << "/" << path << " " << HTTPMessage::HTTP_1_1
       << "\" from " << uri.getHost() << std::endl;
+
       std::ostream& opost = session.sendRequest(proxy_req);
 
       HTMLForm htmlBody(req, req.stream());
