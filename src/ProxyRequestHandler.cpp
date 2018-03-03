@@ -134,9 +134,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
       std::ostream& opost = session.sendRequest(proxy_req);
 
-      HTMLForm htmlBody(req, req.stream());
-
-      htmlBody.write(opost);
+      //HTMLForm htmlBody(req, req.stream());
+      Poco::StreamCopier::copyStream(req.stream(), opost);
+      //htmlBody.write(opost);
 
       // get response
       HTTPResponse proxy_resp;

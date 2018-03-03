@@ -71,7 +71,7 @@ namespace Poco {
           }
 
           if (nDestinationBytes == 0){
-            LOG(TRACE) << "Client or destination closes connection! host=" << host << std::endl << std::flush;
+            LOG(TRACE) << "Destination closes connection! host=" << host << std::endl << std::flush;
             isOpen = false;
           }
 
@@ -182,8 +182,17 @@ namespace Poco {
                   SocketAddress addr = SocketAddress(host);
                   destinationServer.connect(addr);
 
-                  unsigned char okMessage[] = "200 OK";
-                  session.socket().sendBytes(okMessage, 7);
+                  const char okMessage[] = "HTTP/1.1 200 Connection Established\r\n\n\r\n";
+                  session.socket().sendBytes(okMessage, std::strlen(okMessage));
+
+                  /*
+                  Poco::Net::NameValueCollection::ConstIterator i = response.begin();
+                  while(i!=response.end()){
+                      LOG(DEBUG) << "CONNECT header=" <<  i->first << std::endl;
+                      LOG(DEBUG) << "CONNECT value=" <<  i->second << std::endl;
+                      ++i;
+                  }
+                  response.send(); */
 
                   destinationServer.setBlocking(false);
                   session.socket().setBlocking(false);
@@ -288,7 +297,7 @@ namespace Poco {
         }
 
         if (nClientBytes==0){
-          LOG(TRACE) << "Client or destination closes connection! host=" << host << std::endl << std::flush;
+          LOG(TRACE) << "Client closes connection! host=" << host << std::endl << std::flush;
           isOpen = false;
         }
 
