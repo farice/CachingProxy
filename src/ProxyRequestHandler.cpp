@@ -363,6 +363,10 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
       ostringstream oss;
       oss << is.rdbuf();  // extract stream contents for caching
+<<<<<<< HEAD
+=======
+      //LOG(INFO) << "STREAM CONTENTS=" << is.rdbuf();
+>>>>>>> 31505708e23c49ca87d3fa632c554687edb18b8c
       if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
         // add if 200-OK resp to GET request
 
