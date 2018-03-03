@@ -33,7 +33,7 @@ public:
   //CacheResponse(std::string respData, double maxFresh, bool exp);
   CacheResponse(const CacheResponse& rhs);
 
-  CacheResponse(Poco::Net::HTTPResponse response, double maxFresh, bool exp, bool noCache);
+  CacheResponse(Poco::Net::HTTPResponse& response, std::string respData);
 
   CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache);
   CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache, std::string Etag);

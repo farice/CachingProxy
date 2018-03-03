@@ -333,11 +333,11 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
             updateCacheItem(checkResponse);
           }
 
+          // writes to resp
+          (*checkResponse).getResponse(resp);
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
-          HTTPResponse cachedResp;
-          // writes to cachedResp
-          (*checkResponse).getResponse(cachedResp);
+
           LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
           return;
         }
@@ -382,7 +382,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
 	  if (hasNoCacheDirective(proxy_resp)){
 	    LOG(TRACE) << "The response is 'no-cache', must always be validated" << endl;
-	    this->staticCache.add(key,CacheResponse(oss.str(), -1, true, true));
+	    this->staticCache.add(key,CacheResponse(proxy_resp, oss.str()));
 	  }
 	  else{
 	    // is cacheable and has an expiration
@@ -392,7 +392,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         // determine expiration
 
         // testing basic function for now
-	  this->staticCache.add(key, CacheResponse(oss.str(), 10, false, false));
+	  this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
 	}
       }
 

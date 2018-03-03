@@ -72,10 +72,8 @@ void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::
   toResp.setContentType(fromResp.getContentType());
 }
 
-CacheResponse::CacheResponse(Poco::Net::HTTPResponse response, double maxFresh, bool exp, bool noCache):
-  maxFreshness(maxFresh),
-  expired(exp),
-  isNoCache(noCache)
+CacheResponse::CacheResponse(Poco::Net::HTTPResponse& response, std::string respData):
+  responseData(respData)
 {
   Poco::Timestamp ts;
   timeAdded = ts;
