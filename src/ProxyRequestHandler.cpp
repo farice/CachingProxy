@@ -206,19 +206,9 @@ LOG(TRACE) << "The response is cachable " << endl;
 
 std::string etag = getEtag(proxy_resp);
 
-<<<<<<< Updated upstream
-=======
-// currently not being used, running out of time for clean-up
-LOG(TRACE) << "1" << endl;
->>>>>>> Stashed changes
 std::string lastModified = getLastModified(proxy_resp);
 std::string expires = getExpires(proxy_resp);
 double maxAge = getMaxAge(proxy_resp);
-<<<<<<< Updated upstream
-    // determine expiration
-=======
-LOG(TRACE) << "4" << endl;
->>>>>>> Stashed changes
 
 this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
 }
