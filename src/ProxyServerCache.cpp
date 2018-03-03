@@ -114,7 +114,7 @@ bool CacheResponse::isValidResponse(){
   Poco::Timestamp::TimeDiff timeInCache = this->timeAdded.elapsed();
   // timeDiff gives you stuff inmicroseconds 
   if ((1000 * timeInCache) >= this->maxFreshness){
-    LOG(TRACE) << "Item has expired, maxFreshness was: " << this->maxFreshness << ". Time in cache has been: " << (1000*timeInCache) << endl;
+    LOG(TRACE) << "Item has expired, maxFreshness was: " << this->maxFreshness << ". Time in cache has been: " << (timeInCache/1000) << endl;
     
     return false;
   }
