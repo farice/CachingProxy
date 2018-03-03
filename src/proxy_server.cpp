@@ -73,12 +73,13 @@ protected:
     auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::info, AixLog::Type::normal);
     auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::debug, AixLog::Type::all, "/var/log/erss/proxy.log");
     AixLog::Log::init({sink_cout, sink_file});
-    //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(12345), new HTTPServerParams);
 
 		// minCapacity, maxCapacity, idle timeOut, initial stack size
 		Poco::ThreadPool tp(128, 2048, 60, 0);
+    // TCPServer accepts connections and dynamically allocates an existing or new thread depending on the parameters specified above
     TCPServer s(new ProxyHandlerFactory(new HTTPServerParams, new ProxyRequestHandlerFactory), tp, ServerSocket(12345), new HTTPServerParams);
 
+    // daemonize
     s.start();
     LOG(INFO) << endl << "Server started" << endl;
 

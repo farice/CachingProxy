@@ -94,6 +94,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   // Only using HTTP requests (no danger of HTTPS) //
   /************************************************/
 
+  // Strong guarantee -- Either request is handled and expected response is returned to user for this particular HTTP request
+  //                      or objects are unmodified and memory is not leaked, while solely this request fails silently
   try
   {
     // prepare uri

@@ -48,9 +48,10 @@ namespace Poco {
         << destinationServer.getSendBufferSize() << "-" << destinationServer.getSendTimeout().seconds() << std::endl;
 
         while(isOpen){
-          //LOG(TRACE) << "Polling dest for requests. host=" << host << endl;
           int nDestinationBytes = -1;
 
+          // Strong guarantee -- Either HTTPS data is handled and transmitted
+          //                      or objects are unmodified and memory is not leaked, and tunnel is closed
           try {
             if (destinationServer.poll(readPollTimeOut, Socket::SELECT_READ) == true) {
               LOG(TRACE) << "Destination server has more requests! host=" << host << std::endl  << std::flush;
@@ -121,6 +122,8 @@ namespace Poco {
       //StreamSocket destinationServer = StreamSocket();
       while (!_stopped && session.hasMoreRequests())
       {
+        // Strong guarantee -- Either request is parsed for this particular connection
+        // or objects are unmodified and memory is not leaked, while solely this connection closes silently
         try
         {
           LOG(TRACE) << "Grabbing lock. from host=" << session.clientAddress().toString() << std::endl;
@@ -151,6 +154,9 @@ namespace Poco {
             response.setKeepAlive(_pParams->getKeepAlive() && request.getKeepAlive() && session.canKeepAlive());
             if (!server.empty())
             response.set("Server", server);
+
+            // Strong guarantee -- Either request is handled and expected response is returned to user for this particular connection
+            //    or objects are unmodified and memory is not leaked, while solely this connection closes silently
             try
             {
               std::unique_ptr<ProxyRequestHandler> pHandler(_pFactory->createRequestHandler(request));
@@ -196,10 +202,6 @@ namespace Poco {
                   continue;
                 }
 
-                //LOG(TRACE) << "responseStatus=" << response.getStatus() << std::endl;
-
-                //LOG(TRACE) << "pParams keepAlive=" << _pParams->getKeepAlive() << " request keepAlive=" << request.getKeepAlive()
-                //<< " response keepAlive="<< response.getKeepAlive() << " session keepAlive=" << session.canKeepAlive() << std::endl;
                 session.setKeepAlive(_pParams->getKeepAlive() && response.getKeepAlive() && session.canKeepAlive());
 
               }
@@ -208,7 +210,6 @@ namespace Poco {
             }
             catch (Poco::Exception&)
             {
-              //LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
 
               if (!response.sent())
               {
@@ -262,9 +263,10 @@ namespace Poco {
       << session.socket().getSendBufferSize() << "-" << session.socket().getSendTimeout().seconds() << std::endl;
 
       while(isOpen){
-        //LOG(TRACE) << "Polling client for requests. host=" << host << endl;
         int nClientBytes = -1;
 
+        // Strong guarantee -- Either HTTPS data is handled and transmitted
+        //                      or objects are unmodified and memory is not leaked, and tunnel is closed
         try {
           if (session.socket().poll(readPollTimeOut, Socket::SELECT_READ) == true) {
             LOG(TRACE) << "Session has more requests! host=" << host << std::endl << std::flush;
