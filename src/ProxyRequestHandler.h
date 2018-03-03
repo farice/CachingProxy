@@ -31,7 +31,7 @@ public:
   static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp);
 
   void remoteGet(Poco::URI& uri, std::string path, HTTPServerRequest& req, HTTPServerResponse& resp);
-  void updateCacheItem(Poco::URI uri, std::string path, HTTPServerRequest& req, HTTPServerResponse &resp, Poco::SharedPtr<CacheResponse> item);
+  bool updateCacheItem(Poco::URI uri, std::string path, HTTPServerRequest& req, HTTPServerResponse &resp, Poco::SharedPtr<CacheResponse> item);
 
   virtual void handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp);
 

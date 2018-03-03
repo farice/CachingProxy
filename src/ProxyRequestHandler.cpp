@@ -327,8 +327,14 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
             LOG(INFO) << req.get("unique_id") << ": " << "in cache, requires validation" << endl;
-            updateCacheItem(uri, path, req, resp, checkResponse);
-            return;
+            bool shouldUpdate = updateCacheItem(uri, path, req, resp, checkResponse);
+            if (shouldUpdate) {
+              // return because the updateCacheItem call will update the user post-revalidation
+              return;
+            }
+
+            // otherwise, continue and retrieve from cache...
+
           } else {
             LOG(INFO) << req.get("unique_id") << ": " << "in cache, valid" << endl;
           }
@@ -370,7 +376,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
-void ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPServerRequest& req, HTTPServerResponse &resp, Poco::SharedPtr<CacheResponse> item) {
+bool ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPServerRequest& req, HTTPServerResponse &resp, Poco::SharedPtr<CacheResponse> item) {
 
   HTTPResponse cacheResponseObj;
   (*item).getResponse(cacheResponseObj);
@@ -395,11 +401,12 @@ void ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
 
       // TODO - Update max age?
 
-      return;
+      return false;
     }
   }
 
   remoteGet(uri, path, req, resp);
+  return true;
 
 
 }
