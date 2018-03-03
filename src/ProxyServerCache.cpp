@@ -118,6 +118,7 @@ bool CacheResponse::isValidResponse(){
     
     return false;
   }
+  LOG(TRACE) << "Item is still fresh " << endl;
   return true;
 }
 
