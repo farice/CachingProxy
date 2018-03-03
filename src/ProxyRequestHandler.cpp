@@ -153,27 +153,25 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
     }
     else {
-      /* GET or other request method */
+      /* GET or other non-POST request method */
 
       // This is a GET request, so we may be interested in checking the cache
       if (req.getMethod() == "GET"){
 
         // check if the request has been cached
         Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
-        // TODO: - validation logic
-        // add CacheResponseItem call that returns whether item needs to be revalidated to validItem
 
         if (!checkResponse.isNull()){
 
-          // TODO -
+          // returns whether item needs to be revalidated to validItem
 	        bool validItem = (*checkResponse).isValidResponse(req.get("unique_id"));
 
           if (!validItem) {
-            // TODO: - update cacheitem depending on result of If-None-Match request
+            // update cacheitem depending on result of If-None-Match request
 
             bool itemInvalid = updateCacheItem(uri, path, req, resp, checkResponse);
             if (itemInvalid) {
-              // return because a remote request was required (item was invalid after validation)
+              // return because a remote request was required (item was invalid after If-None-Match)
               return;
             }
 
@@ -199,7 +197,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
         }
       } else {
-          // Not a GET request, simply attempt to contact the remote server with the user's request
+          // Not a GET or POST request, simply attempt to contact the remote server with the user's request
           // May fail, but we make a strong exception guarantee
           // and hence we'll either return a valid response to the user or we'll return to the original state unaffected
           remoteReq(uri, path, req, resp);
@@ -217,8 +215,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     LOG(INFO) << req.get("unique_id") << ": " << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   }
 
-
-  LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
 // returns true if the cache item requires a remote request
@@ -227,6 +223,8 @@ bool ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
   HTTPResponse cacheResponseObj;
   (*item).getResponse(cacheResponseObj);
   string etag = "";
+  string lm = "";
+
   if(cacheResponseObj.has("Etag")) {
     etag = cacheResponseObj.get("Etag");
     LOG(DEBUG) << "cached response has etag=" << etag << std::endl;
@@ -240,11 +238,35 @@ bool ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
     HTTPResponse ping_resp;
     session.receiveResponse(ping_resp);
 
-    LOG(INFO) << req.get("unique_id") << ": " << "NOTE sent If-None-Match request, receive status " << ping_resp.getStatus() << std::endl;
+    LOG(INFO) << req.get("unique_id") << ": " << "NOTE sent If-None-Match request, received status " << ping_resp.getStatus() << std::endl;
 
     if (ping_resp.getStatus() == 304) {
       LOG(INFO) << req.get("unique_id") << ": " <<  "NOTE cached response validated" << std::endl;
-      // TODO - Update max age?
+
+      // update expiration timestamp
+      (*item).validated(req.get("unique_id"));
+
+      return false;
+    }
+  } else if (cacheResponseObj.has("Last-Modified")) {
+    lm = cacheResponseObj.get("Last-Modified");
+    HTTPClientSession session(uri.getHost(), uri.getPort());
+    HTTPRequest ping_req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
+    ping_req.add("If-Modified-Since", lm);
+    // send request normally
+    session.sendRequest(ping_req);
+
+    // get response
+    HTTPResponse ping_resp;
+    session.receiveResponse(ping_resp);
+
+    LOG(INFO) << req.get("unique_id") << ": " << "NOTE sent If-Modified-Since request, received status " << ping_resp.getStatus() << std::endl;
+
+    if (ping_resp.getStatus() == 304) {
+      LOG(INFO) << req.get("unique_id") << ": " <<  "NOTE cached response validated" << std::endl;
+
+      // update expiration timestamp
+      (*item).validated(req.get("unique_id"));
 
       return false;
     }

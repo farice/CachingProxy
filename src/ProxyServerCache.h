@@ -67,6 +67,8 @@ public:
 
   Poco::Timespan getMaxFreshness();
 
+  void validated(std::string unique_id);
+
 };
 
 

@@ -7,19 +7,10 @@ using Poco::DateTimeFormat;
 
 // constructor
 ProxyServerCache::ProxyServerCache(){
-  //LOG(DEBUG) << "Yo, the cache is created with size = " << 1024 << std::endl;
 }
-
-// constructor (overloaded)
-/*
-ProxyServerCache::ProxyServerCache(size_t new_size):size(new_size){
-  LOG(DEBUG) << "Yo, the cache is created with size = " << this->size << std::endl;
-}
-*/
 
 // destructor
 ProxyServerCache::~ProxyServerCache(){
-  //LOG(DEBUG) << "Yo, the cache has been destroyed... " << std::endl;
 }
 
 std::string ProxyServerCache::makeKey(Poco::URI& uri){
@@ -326,6 +317,15 @@ Etag(rhs.Etag), last_modified(rhs.last_modified)
 
 CacheResponse::~CacheResponse(){}
 
+
+void CacheResponse::validated(std::string unique_id) {
+  // if freshness time from valid request != -1
+  if(this->maxFreshness.seconds() != -1) {
+    // then update the expiration time to current time + freshness time
+    LOG(INFO) << unique_id << ": NOTE expiration date updated." << std::endl;
+    this->expireTimestamp += this->maxFreshness;
+  }
+}
 
 std::string CacheResponse::getResponseDataStr(){
   return this->responseData.str();
