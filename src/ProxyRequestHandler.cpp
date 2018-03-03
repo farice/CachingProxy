@@ -423,21 +423,27 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
-void ProxyRequestHandler::updateCacheItem(Poco::SharedPtr<CacheResponse> item) {
-  string etag = (*item).getEtag();
-  string last_modified = (*item).getLastModified();
+void ProxyRequestHandler::updateCacheItem(URI uri, string path, Poco::SharedPtr<CacheResponse> item) {
 
-  /*
-  HTTPClientSession session(uri.getHost(), uri.getPort());
-  HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+  HTTPResponse cachResponseObj;
+  (*item).getResponse(cacheResponseObj);
+  string etag = "";
+  if(cacheResponseObj.has("Etag")) {
+    etag = cacheResponseObj.get("Etag");
+    LOG(DEBUG) << "cached response has etag=" << etag << std::endl;
+    HTTPClientSession session(uri.getHost(), uri.getPort());
+    HTTPRequest ping_req(HTTPMethod::HTTP_GET, path, HTTPMessage::HTTP_1_1);
+    ping_req.add("If-None-Match", etag);
+    // send request normally
+    session.sendRequest(proxy_req);
 
-  // send request normally
-  proxy_req.setContentType("text/html");
-  session.sendRequest(proxy_req);
+    // get response
+    HTTPResponse ping_resp;
+    session.receiveResponse(ping_resp);
 
-  // get response
-  HTTPResponse proxy_resp;
-  */
+    LOG(DEBUG) << "status code from ping=" << ping_resp.getStatus() << std::endl;
+  }
+
 }
 
 
