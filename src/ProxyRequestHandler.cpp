@@ -169,7 +169,7 @@ bool ProxyRequestHandler::hasNoCacheDirective(HTTPResponse& resp){
   return false;
 }
 
-// string NO_ETAG indicates no strong validator found 
+// string NO_ETAG indicates no strong validator found
 std::string ProxyRequestHandler::getEtag(HTTPResponse& resp){
   NameValueCollection::ConstIterator it = resp.begin();
   while (it != resp.end()){
@@ -179,10 +179,10 @@ std::string ProxyRequestHandler::getEtag(HTTPResponse& resp){
     ++it;
   }
   return "NO_ETAG";
-} 
+}
 
 
-// -1 indicates no max-age directive found 
+// -1 indicates no max-age directive found
 double ProxyRequestHandler::getMaxAge(HTTPResponse& resp){
   std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp);
   for (int i = 0; i < cacheControlHeaders.size(); i++){
@@ -192,18 +192,18 @@ double ProxyRequestHandler::getMaxAge(HTTPResponse& resp){
     }
   }
   return -1;
-} 
+}
 
 
 /*
 std::string ProxyRequestHandler::getDate(HTTPResponse& resp){
   // can get data directly from request with poco library function
-  // maybe just store it as to_string? doesn't really matter 
+  // maybe just store it as to_string? doesn't really matter
 
 }
 */
 
-// string NO_EXPIRE indicates no expiration header was found 
+// string NO_EXPIRE indicates no expiration header was found
 std::string ProxyRequestHandler::getExpires(HTTPResponse& resp){
   NameValueCollection::ConstIterator it = resp.begin();
   while (it != resp.end()){
@@ -213,7 +213,7 @@ std::string ProxyRequestHandler::getExpires(HTTPResponse& resp){
     ++it;
   }
   return "NO_EXPIRE";
-} 
+}
 
 
 
@@ -225,7 +225,7 @@ std::string ProxyRequestHandler::getLastModified(HTTPResponse& resp){
     }
     ++it;
   }
-  return "NO_LAST_MODIFY";  
+  return "NO_LAST_MODIFY";
 }
 
 
@@ -335,6 +335,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
+          cachedResp = (*checkResponse).getResponse();
+          // copies cookies, headers, etc
+          ProxyServerCache::copyResponseObj(cachedResp, resp);
           LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
           return;
         }
@@ -360,7 +363,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
       ostringstream oss;
       oss << is.rdbuf();  // extract stream contents for caching
-
       if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
         // add if 200-OK resp to GET request
 
@@ -377,7 +379,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 	  std::string expires = getExpires(proxy_resp);
 
 	  double maxAge = getMaxAge(proxy_resp);
-	  
+
 	  if (hasNoCacheDirective(proxy_resp)){
 	    LOG(TRACE) << "The response is 'no-cache', must always be validated" << endl;
 	    this->staticCache.add(key,CacheResponse(oss.str(), -1, true, true));
@@ -386,7 +388,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 	    // is cacheable and has an expiration
 
 	  }
-	  
+
         // determine expiration
 
         // testing basic function for now

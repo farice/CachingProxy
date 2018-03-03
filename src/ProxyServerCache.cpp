@@ -78,6 +78,8 @@ CacheResponse::CacheResponse(Poco::Net::HTTPResponse response, double maxFresh, 
   Poco::Timestamp ts;
   timeAdded = ts;
   ProxyServerCache::copyResponseObj(response, responseObj);
+
+  LOG(DEBUG) << "copied over" << responseObj.getContentType();
   //startExpire(this->maxFreshness); // start the expiration timer
 }
 
