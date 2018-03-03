@@ -18,7 +18,6 @@
 #include <Poco/Net/AcceptCertificateHandler.h>
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/StreamCopier.h>
-#include <Poco/URI.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPRequestHandler.h>
@@ -38,81 +37,6 @@ using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace std;
 
-
-// Note we are only concerned here with the responses to get requests
-pair<int,int> getCacheControl(HTTPServerResponse& resp){ // this function is trash
-
-  int freshness;
-  if (resp.has("Cache-Control")) {
-
-    const string controlVal = resp.get("Cache-control");
-
-    LOG(TRACE) << "Cache-Control=" << resp.get("Cache-control") << endl;
-
-    if (controlVal.find("max-age=") != string::npos){
-      freshness = stoi(controlVal.substr(controlVal.find("=") + 1, string::npos));
-      LOG(TRACE) << "freshness from max-age = " << freshness << endl;
-      pair<int,int> ret(0, freshness);
-      return ret;
-    }
-    else if (controlVal.find("s-maxage=") != string::npos){
-      // overrides the max age of the resource in the response
-      freshness = stoi(controlVal.substr(controlVal.find("=") + 1, string::npos));
-      // need way to indicate that this is override, maybe return a std::pair with one element
-      // being an indicator
-      pair<int, int> ret(1, freshness);
-      return ret;
-    }
-    else if (controlVal.find("max-stale") != string::npos){
-      // can use an expired response, or a response that has expired by no more than x seconds
-      int max_stale_time = stoi(controlVal.substr(controlVal.find("=") + 1, string::npos));
-      pair<int,int> ret(2, max_stale_time);
-      // note, the time is an optional argument, may need to lookout for thsi
-      return ret;
-    }
-    else if (controlVal.find("min-fresh") != string::npos){
-      int min_fresh_time = stoi(controlVal.substr(controlVal.find("=") + 1, string::npos));
-      pair<int,int> ret(3, min_fresh_time);
-      return ret;
-    }
-    else if (controlVal.find("no-store") != string::npos){
-      // code here for no-store
-      //freshness = -1; // -1 to indicate no-store directive
-      pair<int,int> ret(-1,-1);
-      return ret;
-    }
-    else if (controlVal.find("private") != string::npos){
-      pair<int,int> ret(-1,-1);
-      return ret;
-    }
-    else if (controlVal.find("no-cache") != string::npos){
-      // item must be re-validated before it is served
-      //freshness = -2; // indicate need for re-validation
-      pair<int,int> ret(-2,-2);
-      return ret;
-    }
-    else if (controlVal.find("must-revalidate") != string::npos){
-      // item must be re-validated IF it is stale
-      pair<int,int> ret(-3,-3);
-      return ret;
-    }
-    else if (controlVal.find("only-if-cached") != string::npos){
-      // only use the cached response if it exists
-      pair<int,int> ret(-4,-4);
-      return ret;
-    }
-    else{
-      // no meaningful cache-control directive
-      pair<int, int> ret(-10,-10);
-      return ret;
-    }
-    // We won't worry about the 'no-transform' directive because we won't be modifying entries
-    // We won't worry about the 'stale-while-revalidate' and 'stale-if-error' directives as they are
-    // experimental, non-standard features not supported by most browsers
-  }
-  pair<int, int> ret(-10,-10);
-  return ret;
-}
 
 /*
 Expiration time is determined by more than the cache-control header
@@ -246,6 +170,60 @@ std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getHeaders
   return headers;
 }
 
+void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServerRequest& req, HTTPServerResponse& resp) {
+  HTTPClientSession session(uri.getHost(), uri.getPort());
+  HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+
+  // send request normally
+  proxy_req.setContentType("text/html");
+  session.sendRequest(proxy_req);
+
+  // get response
+  HTTPResponse proxy_resp;
+  // create istream for session response
+  istream &is = session.receiveResponse(proxy_resp);
+
+  // copies cookies, headers, etc
+  ProxyServerCache::copyResponseObj(proxy_resp, resp);
+
+  ostringstream oss;
+  oss << is.rdbuf();  // extract stream contents for caching
+  if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
+    // add if 200-OK resp to GET request
+
+if (isCacheableResp(proxy_resp)){
+// filter out 'no-store' and 'private' responses
+LOG(TRACE) << "The response is cachable " << endl;
+
+// now parse to find the Etag, lastModified, and other header fields
+
+std::string etag = getEtag(proxy_resp);
+
+std::string lastModified = getLastModified(proxy_resp);
+
+std::string expires = getExpires(proxy_resp);
+
+double maxAge = getMaxAge(proxy_resp);
+
+    // determine expiration
+
+    // testing basic function for now
+this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
+}
+  }
+
+  LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason()
+  << std::endl;
+
+  LOG(TRACE) << "Requesting url=" << uri.getHost() << std::endl
+  << "port=" << uri.getPort() << endl
+  << "path=" << path << endl;
+
+  std::ostream& out = resp.send();
+
+  // Copy HTTP stream to app server response stream
+  out << oss.str();
+}
 
 void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
 {
@@ -330,7 +308,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
-            updateCacheItem(checkResponse);
+            updateCacheItem(uri, path, checkResponse);
           }
 
           // writes to resp
@@ -343,71 +321,15 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
           return;
         }
         else{
+
           LOG(DEBUG) << "The request is not in the cache" << endl;
+          remoteGet(uri, path, req, resp);
+
         }
+      } else {
+          remoteGet(uri, path, req, resp);
       }
 
-      HTTPClientSession session(uri.getHost(), uri.getPort());
-      HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
-
-      // send request normally
-      proxy_req.setContentType("text/html");
-      session.sendRequest(proxy_req);
-
-      // get response
-      HTTPResponse proxy_resp;
-      // create istream for session response
-      istream &is = session.receiveResponse(proxy_resp);
-
-      // copies cookies, headers, etc
-      ProxyServerCache::copyResponseObj(proxy_resp, resp);
-
-      ostringstream oss;
-      oss << is.rdbuf();  // extract stream contents for caching
-      if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
-        // add if 200-OK resp to GET request
-
-	if (isCacheableResp(proxy_resp)){
-	  // filter out 'no-store' and 'private' responses
-	  LOG(TRACE) << "The response is cachable " << endl;
-
-	  // now parse to find the Etag, lastModified, and other header fields
-
-	  std::string etag = getEtag(proxy_resp);
-
-	  std::string lastModified = getLastModified(proxy_resp);
-
-	  std::string expires = getExpires(proxy_resp);
-
-	  double maxAge = getMaxAge(proxy_resp);
-
-	  if (hasNoCacheDirective(proxy_resp)){
-	    LOG(TRACE) << "The response is 'no-cache', must always be validated" << endl;
-	    this->staticCache.add(key,CacheResponse(proxy_resp, oss.str()));
-	  }
-	  else{
-	    // is cacheable and has an expiration
-
-	  }
-
-        // determine expiration
-
-        // testing basic function for now
-	  this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
-	}
-      }
-
-      LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason()
-      << std::endl;
-
-      LOG(TRACE) << "Requesting url=" << uri.getHost() << std::endl
-      << "port=" << uri.getPort() << endl
-      << "path=" << path << endl;
-
-      std::ostream& out = resp.send();
-
-      // Copy HTTP stream to app server response stream
-      out << oss.str();
     }
   }
   catch (Poco::Exception &ex){
@@ -423,26 +345,37 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
-void ProxyRequestHandler::updateCacheItem(URI uri, string path, Poco::SharedPtr<CacheResponse> item) {
+void ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPServerRequest& req, HTTPServerResponse &resp, Poco::SharedPtr<CacheResponse> item) {
 
-  HTTPResponse cachResponseObj;
+  HTTPResponse cacheResponseObj;
   (*item).getResponse(cacheResponseObj);
   string etag = "";
   if(cacheResponseObj.has("Etag")) {
     etag = cacheResponseObj.get("Etag");
     LOG(DEBUG) << "cached response has etag=" << etag << std::endl;
     HTTPClientSession session(uri.getHost(), uri.getPort());
-    HTTPRequest ping_req(HTTPMethod::HTTP_GET, path, HTTPMessage::HTTP_1_1);
+    HTTPRequest ping_req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
     ping_req.add("If-None-Match", etag);
     // send request normally
-    session.sendRequest(proxy_req);
+    session.sendRequest(ping_req);
 
     // get response
     HTTPResponse ping_resp;
     session.receiveResponse(ping_resp);
 
     LOG(DEBUG) << "status code from ping=" << ping_resp.getStatus() << std::endl;
+
+    if (ping_resp.getStatus() == 304) {
+      LOG(DEBUG << "potentially stale data remains valid" << std::endl;
+
+      // TODO - Update max age?
+
+      return;
+    }
   }
+
+  remoteGet(uri, path, req, resp);
+
 
 }
 
