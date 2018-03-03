@@ -176,7 +176,7 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   string key = this->staticCache.makeKey(uri);
 
   // send request normally
-  LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << uri.getHost() << "/" << path << " " << HTTPMessage::HTTP_1_1
+  LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << uri.getHost() << path << " " << HTTPMessage::HTTP_1_1
   << "\" from " << uri.getHost() << std::endl;
 
   proxy_req.setContentType("text/html");
@@ -187,7 +187,7 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   // create istream for session response
   istream &is = session.receiveResponse(proxy_resp);
 
-  LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
+  LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << " " << proxy_resp.getStatus() << " " << proxy_resp.getReason()
   << "\" from " << uri.getHost() << std::endl;
 
   // copies cookies, headers, etc
@@ -280,7 +280,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       req.getCookies(postCookies);
       proxy_req.setCookies(postCookies);
 
-      LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << uri.getHost() << "/" << path << " " << HTTPMessage::HTTP_1_1
+      LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << uri.getHost() << path << " " << HTTPMessage::HTTP_1_1
       << "\" from " << uri.getHost() << std::endl;
 
       std::ostream& opost = session.sendRequest(proxy_req);
