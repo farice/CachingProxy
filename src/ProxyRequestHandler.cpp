@@ -165,7 +165,7 @@ std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getHeaders
     ++it;
   }
   for (int i = 0; i < headers.size(); i++){
-    cout << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
+    LOG(TRACE) << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
   }
   return headers;
 }
@@ -206,12 +206,20 @@ LOG(TRACE) << "The response is cachable " << endl;
 
 std::string etag = getEtag(proxy_resp);
 
+<<<<<<< Updated upstream
+=======
+// currently not being used, running out of time for clean-up
+LOG(TRACE) << "1" << endl;
+>>>>>>> Stashed changes
 std::string lastModified = getLastModified(proxy_resp);
 std::string expires = getExpires(proxy_resp);
 double maxAge = getMaxAge(proxy_resp);
+<<<<<<< Updated upstream
     // determine expiration
+=======
+LOG(TRACE) << "4" << endl;
+>>>>>>> Stashed changes
 
-    // testing basic function for now
 this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
 }
   }
@@ -227,7 +235,7 @@ this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
   std::ostream& out = resp.send();
   // Copy HTTP stream to app server response stream
   out << oss.str(); //trying the below
-  //Poco::StreamCoper::copyStream(is, out);
+
 }
 
 void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)

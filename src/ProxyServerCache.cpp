@@ -1,7 +1,9 @@
 #include "ProxyServerCache.h"
+#include <Poco/DateTimeParser.h>
 
-using namespace Poco;;
+using namespace Poco;
 using namespace std;
+using Poco::DateTimeFormat;
 
 // constructor
 ProxyServerCache::ProxyServerCache(){
@@ -80,6 +82,9 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
 {
   Poco::Timestamp ts;
   timeAdded = ts;
+  this->responseDate = DateTime(response.getDate());
+
+  //  LOG(TRACE) << "Date cached response was received: " << 
 
   if (response.has("Cache-Control")){ // assign cache control values
     string cacheControl = response.get("Cache-Control");
@@ -91,22 +96,26 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
       this->maxFreshness = atof((cacheControl.substr(cacheControl.find("=") + 1, string::npos)).c_str());
       LOG(TRACE) << "freshness from max-age = " << this->maxFreshness << endl;
     }
-    else{
-      this->maxFreshness = 10;
-      //   response.has("Expires") ? this
+  }
+  
+  else{
+   
+    response.has("Expires") ? this->expiresStr = response.get("Expires") : this->expiresStr = "";
+    response.has("Last-Modified") ? this->last_modified = response.get("Last-Modified") :
+      this->last_modified = "";
+    
+    string fmt = "%w, %e %b %Y %H:%M:%S GMT"; 
+
+    int UTC = 0;
+    
+    if (DateTimeParser::tryParse(fmt , this->expiresStr, this->expireDate, UTC));
       // determine freshness lifetime from Expires - Date, or (Date - Last-Modified)/10
-    }
   }
   response.has("ETag") ? this->Etag = response.get("ETag") : this->Etag = "";
-  response.has("Last-Modified") ? this->last_modified = response.get("Last-Modified") :
-    this->last_modified = "";
-  
   
   //LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(response, responseObj);
   //LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
-
-  //startExpire(this->maxFreshness); // start the expiration timer
 }
 
 
@@ -130,8 +139,6 @@ CacheResponse::CacheResponse(const CacheResponse& rhs) :responseData(rhs.respons
 
   LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(rhs.responseObj, this->responseObj);
-
-  //startExpire(this->maxFreshness); // start the expiration timer
 }
 
 
@@ -167,22 +174,6 @@ CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bo
 }
 
 CacheResponse::~CacheResponse(){}
-
-
-void CacheResponse::startExpire(double seconds){
-  clock_t startExpireTime = clock();
-  double secondsToExpire = seconds;
-  bool stillValid = true;
-  double elapsedTime;
-  while (stillValid){ // right now this just waits till its expired, retard
-    elapsedTime = (clock() - startExpireTime) / CLOCKS_PER_SEC;
-    if (elapsedTime >= secondsToExpire){
-      LOG(DEBUG) << " Time is up " << std::endl;
-      stillValid = false;
-      this->expired = true;
-    }
-  }
-}
 
 
 std::string CacheResponse::getResponseDataStr(){

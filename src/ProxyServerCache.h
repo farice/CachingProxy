@@ -10,6 +10,8 @@
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
+#include <Poco/DateTimeFormatter.h>
+#include <Poco/DateTimeFormat.h>
 
 // Reponse object that will be cached with an expiration timer (defuct, not useing ExpireCache)
 typedef Poco::ExpirationDecorator<std::istream> ExpRespStream;
@@ -20,13 +22,17 @@ private:
   //std::string responseData;
   std::ostringstream responseData;
 
-
+  Poco::DateTime responseDate;
+  Poco::DateTime expireDate;
+  Poco::DateTime LastModifiedDate;
+  
   Poco::Net::HTTPResponse responseObj;
   double maxFreshness;
   //double currentFreshness;
   bool expired;
   bool isNoCache;
   Poco::Timestamp timeAdded; // timestamp of when item was cached
+  std::string expiresStr;
   std::string Etag;
   std::string last_modified;
 
@@ -49,8 +55,6 @@ public:
   bool isValidResponse();
   
   ~CacheResponse();
-
-  void startExpire(double seconds);
 
   std::ostringstream& getResponseData();
   void getResponse(Poco::Net::HTTPResponse& writeToResponse);
@@ -79,8 +83,6 @@ public:
   static void copyResponseObj(const Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp);
 
   ProxyServerCache();
-
-  //ProxyServerCache(size_t size);
 
   ~ProxyServerCache();
 
