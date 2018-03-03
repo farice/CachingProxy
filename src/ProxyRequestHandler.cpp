@@ -59,7 +59,7 @@ std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheCo
   }
   LOG(TRACE) << "Cache-control headers" << endl;
   for (int i = 0; i < headers.size(); i++){
-    cout << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
+    LOG(DEBUG) << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
   }
   return headers;
 }
