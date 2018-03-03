@@ -1,3 +1,4 @@
+
 #include "ProxyServerCache.h"
 
 using namespace Poco;
@@ -28,9 +29,6 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
   return key;
 }
 
-Poco::Net::HTTPResponse getResponse() {
-  return responseObj;
-}
 
 void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
   // Copy over headers
@@ -172,6 +170,12 @@ bool CacheResponse::isExpired(){
 
 void CacheResponse::setExpired(bool exp){
   this->expired = exp;
+}
+
+
+  void CacheResponse::getResponse(Poco::Net::HTTPResponse& writeToResponse) {
+  // copies cookies, headers, etc
+  ProxyServerCache::copyResponseObj(this->responseObj, writeToResponse);
 }
 
 /*

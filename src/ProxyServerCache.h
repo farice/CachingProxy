@@ -49,6 +49,7 @@ public:
   void startExpire(double seconds);
 
   std::ostringstream& getResponseData();
+  void getResponse(Poco::Net::HTTPResponse& writeToResponse);
 
   std::string getResponseDataStr();
 
@@ -70,8 +71,6 @@ private:
 
 
 public:
-
-  Poco::Net::HTTPResponse getResponse();
   static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp);
   static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp);
 

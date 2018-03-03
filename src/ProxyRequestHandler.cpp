@@ -335,9 +335,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
-          cachedResp = (*checkResponse).getResponse();
-          // copies cookies, headers, etc
-          ProxyServerCache::copyResponseObj(cachedResp, resp);
+          HTTPResponse cachedResp;
+          // writes to cachedResp
+          (*checkResponse).getResponse(cachedResp);
           LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
           return;
         }
