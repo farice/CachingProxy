@@ -299,7 +299,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       istream &is = session.receiveResponse(proxy_resp);
       LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
       << "\" from " << uri.getHost() << std::endl;
-      
+
       ProxyServerCache::copyResponseObj(proxy_resp, resp);
 
       LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
@@ -322,7 +322,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         if (!checkResponse.isNull()){
 
 	  bool validItem = (*checkResponse).isValidResponse();
-	  
+
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
             LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, requires validation" << endl;
@@ -344,7 +344,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         }
         else{
 
-          LOG(INFO) << req.get("unique_id") << ": \"" << "not in cache" << endl;
+          LOG(INFO) << req.get("unique_id") << ": " << "not in cache" << endl;
           remoteGet(uri, path, req, resp);
 
         }
@@ -359,8 +359,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     LOG(DEBUG) << "Failed to get response from url=" << req.getURI() << std::endl
     << "method=" << req.getMethod() << std::endl
     << ex.what() << ": " << ex.message() << endl;
-
+    
     resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
+    LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   }
 
 
