@@ -18,7 +18,6 @@
 #include <Poco/Net/AcceptCertificateHandler.h>
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/StreamCopier.h>
-#include <Poco/URI.h>
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPRequestHandler.h>
@@ -330,7 +329,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
-            updateCacheItem(checkResponse);
+            updateCacheItem(uri, path, checkResponse);
           }
 
           // writes to resp
@@ -423,19 +422,19 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
-void ProxyRequestHandler::updateCacheItem(URI uri, string path, Poco::SharedPtr<CacheResponse> item) {
+void ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, Poco::SharedPtr<CacheResponse> item) {
 
-  HTTPResponse cachResponseObj;
+  HTTPResponse cacheResponseObj;
   (*item).getResponse(cacheResponseObj);
   string etag = "";
   if(cacheResponseObj.has("Etag")) {
     etag = cacheResponseObj.get("Etag");
     LOG(DEBUG) << "cached response has etag=" << etag << std::endl;
     HTTPClientSession session(uri.getHost(), uri.getPort());
-    HTTPRequest ping_req(HTTPMethod::HTTP_GET, path, HTTPMessage::HTTP_1_1);
+    HTTPRequest ping_req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
     ping_req.add("If-None-Match", etag);
     // send request normally
-    session.sendRequest(proxy_req);
+    session.sendRequest(ping_req);
 
     // get response
     HTTPResponse ping_resp;
