@@ -231,7 +231,8 @@ this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
   std::ostream& out = resp.send();
 
   // Copy HTTP stream to app server response stream
-  out << oss.str();
+  out << oss.str(); //trying the below
+  //Poco::StreamCoper::copyStream(is, out);
 }
 
 void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerResponse &resp)
@@ -317,10 +318,11 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         Poco::SharedPtr<CacheResponse> checkResponse = this->staticCache.get(key);
         // TODO: - validation logic
         // add CacheResponseItem call that returns whether item needs to be revalidated to validItem
-        bool  validItem = false;
 
         if (!checkResponse.isNull()){
 
+	  bool validItem = (*checkResponse).isValidResponse();
+	  
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
             LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, requires validation" << endl;

@@ -6,7 +6,7 @@
 #include "logging/aixlog.hpp"
 #include <Poco/URI.h>
 #include <Poco/Clock.h>
-#include<Poco/Timestamp.h>
+#include <Poco/Timestamp.h>
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
@@ -46,6 +46,8 @@ public:
   std::string getLastModified();
   bool getIsNoCache();
 
+  bool isValidResponse();
+  
   ~CacheResponse();
 
   void startExpire(double seconds);
