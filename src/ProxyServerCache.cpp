@@ -82,6 +82,27 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
   Poco::Timestamp ts;
   timeAdded = ts;
 
+  if (response.has("Cache-Control")){ // assign cache control values
+    string cacheControl = response.get("Cache-Control");
+    LOG(TRACE) << "Cache-Control from the HTTPResponse dictionary" << cacheControl << endl;
+
+    // no need to check here for no-store or private, already filtered
+
+    if (cacheControl.find("max-age=") != string::npos){
+      this->maxFreshness = atof((current.substr(current.find("=") + 1, string::npos)).c_str());
+      LOG(TRACE) << "freshness from max-age = " << this->maxFreshness << endl;
+    }
+    else{
+      this->maxFreshness = 10;
+      //   response.has("Expires") ? this
+      // determine freshness lifetime from Expires - Date, or (Date - Last-Modified)/10
+    }
+  }
+  response.has("ETag") ? this->Etag = response.get("ETag") : this->Etag("");
+  response.has("Last-Modified") ? this->last_modified = response.get("Last-Modified") :
+    this->last_modified("");
+  
+  
   //LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(response, responseObj);
   //LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
