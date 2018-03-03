@@ -25,7 +25,7 @@ private:
   Poco::DateTime responseDate;
   Poco::DateTime expireDate;
   Poco::DateTime LastModifiedDate;
-  
+
   Poco::Net::HTTPResponse responseObj;
   double maxFreshness;
   //double currentFreshness;
@@ -53,7 +53,7 @@ public:
   bool getIsNoCache();
 
   bool isValidResponse();
-  
+
   ~CacheResponse();
 
   std::ostringstream& getResponseData();
@@ -81,6 +81,19 @@ private:
 public:
   static void copyResponseObj(const Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp);
   static void copyResponseObj(const Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp);
+  static std::map<std::string, std::string> getCacheControlHeaders(const Poco::Net::HTTPResponse& resp);
+
+  static double getMaxAge(const Poco::Net::HTTPResponse& resp);
+
+  static std::string getExpires(const Poco::Net::HTTPResponse& resp);
+
+  static std::string getEtag(const Poco::Net::HTTPResponse& resp);
+
+  static std::string getLastModified(const Poco::Net::HTTPResponse& resp);
+
+  static bool isCacheableResp(const Poco::Net::HTTPResponse& resp, std::string id);
+
+  static bool hasNoCacheDirective(const Poco::Net::HTTPResponse& resp);
 
   ProxyServerCache();
 

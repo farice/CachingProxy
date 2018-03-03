@@ -159,6 +159,12 @@ namespace Poco {
                 if (request.expectContinue() && response.getStatus() == HTTPResponse::HTTP_OK)
                 response.sendContinue();
 
+                Poco::Timestamp now;
+                std::string fmt = "%w %b %f %H:%M:%S %Y";
+                std::string timestamp_str = Poco::DateTimeFormatter::format(now, fmt);
+                LOG(INFO) << request.get("unique_id") << ": \"" << request.getMethod() << " " << request.getHost() << " " << request.getVersion()
+                << "\" from " << request.get("ip_addr") << " @ " << timestamp_str << std::endl;
+
                 if (request.getMethod() != "CONNECT") {
                   // HTTP so pass to our ProxyRequestHandler (controls GET, POST, and cache logic)
                   pHandler->handleRequest(request, response);

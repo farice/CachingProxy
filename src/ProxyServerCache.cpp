@@ -77,6 +77,111 @@ void ProxyServerCache::copyResponseObj(const Poco::Net::HTTPResponse &fromResp, 
   toResp.setContentType(fromResp.getContentType());
 }
 
+/*
+Expiration time is determined by more than the cache-control header
+- may be easier to just return a struct with all the information the cache needs to
+- consume
+*/
+
+std::map<std::string, std::string> ProxyServerCache::getCacheControlHeaders(const Poco::Net::HTTPResponse& resp){
+  /*
+  if (resp.has("cacheControlHeaders")){
+    return resp.get("cacheControlHeaders");
+  } */
+
+  map<std::string, std::string> ret;
+  if (resp.has("Cache-Control")) {
+    std::string cacheHeaders = resp.get("Cache-Control");
+    LOG(DEBUG) << "cache-control headers=" << cacheHeaders << std::endl;
+    if(cacheHeaders == "") {
+      return ret;
+    }
+
+    std::stringstream ss(cacheHeaders);
+    while (ss.good())
+    {
+        std::string substr;
+        getline(ss, substr, ',');
+
+        std::size_t current = substr.find("=");
+        if(current != std::string::npos) {
+          LOG(DEBUG) << "CC header key=" << substr.substr(0, current) << " value=" << substr.substr(current + 1) << std::endl;
+          ret[substr.substr(0, current)] = substr.substr(current + 1);
+        } else {
+          LOG(DEBUG) << "CC header=" << substr << std::endl;
+          ret[substr] = "";
+        }
+    }
+
+  }
+
+  //resp.add("cacheControlHeaders", ret);
+  return ret;
+}
+
+
+// Not cacheable if has directives: no-store, private
+// no-cache: may implement this directive, may not, functionality is met but just
+// forwarding the response to the client in this case
+
+// must-revalidate makes you re-validate a cached response if it is stale
+// no-cache makes you re-validate a cached response everytime
+bool ProxyServerCache::isCacheableResp(const Poco::Net::HTTPResponse& resp, std::string id){
+  std::map<std::string,std::string> cacheHeaders = getCacheControlHeaders(resp);
+
+  //  LOG(DEBUG) << "cache-control headers=" << cacheHeaders;
+    if (cacheHeaders.find("no-store") != cacheHeaders.end()){
+      LOG(INFO) << id << ": " << "not cacheable because no-store"<< std::endl;
+      return false;
+    } else if (cacheHeaders.find("private") != cacheHeaders.end()) {
+      LOG(INFO) << id << ": " << "not cacheable because private" << std::endl;
+      return false;
+    }
+  return true;
+}
+
+
+bool ProxyServerCache::hasNoCacheDirective(const Poco::Net::HTTPResponse& resp){
+  std::map<std::string,std::string> cacheControlHeaders = getCacheControlHeaders(resp);
+  return (cacheControlHeaders.find("no-cache") != cacheControlHeaders.end());
+}
+
+// string NO_ETAG indicates no strong validator found
+std::string ProxyServerCache::getEtag(const Poco::Net::HTTPResponse& resp){
+  if (resp.has("ETag")) {
+    return resp.get("ETag");
+  }
+  return "";
+}
+
+
+// -1 indicates no max-age directive found
+double ProxyServerCache::getMaxAge(const Poco::Net::HTTPResponse& resp){
+  std::map<std::string,std::string> cacheHeaders = getCacheControlHeaders(resp);
+  if (cacheHeaders.find("max-age") != cacheHeaders.end()) {
+    std::map<std::string, std::string>::iterator i = cacheHeaders.find("max-age");
+    return stod(i->second);
+  }
+  return -1;
+}
+
+// string NO_EXPIRE indicates no expiration header was found
+std::string ProxyServerCache::getExpires(const Poco::Net::HTTPResponse& resp){
+  if(resp.has("ETag")) {
+    return resp.get("ETag");
+  }
+  return "";
+}
+
+
+
+std::string ProxyServerCache::getLastModified(const Poco::Net::HTTPResponse& resp){
+  if(resp.has("Last-Modified")) {
+    return resp.get("Last-Modified");
+  }
+  return "";
+}
+
 CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::string respData):
   responseData(respData)
 {
@@ -85,6 +190,10 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
   this->responseDate = DateTime(response.getDate());
 
   //  LOG(TRACE) << "Date cached response was received: " <<
+  // now parse to find the Etag, lastModified, and other header fields
+  std::string lastModified = ProxyServerCache::getLastModified(response);
+  std::string expires = ProxyServerCache::getExpires(response);
+  double maxAge = ProxyServerCache::getMaxAge(response);
 
   if (response.has("Cache-Control")){ // assign cache control values
     string cacheControl = response.get("Cache-Control");
@@ -114,7 +223,7 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
     if (DateTimeParser::tryParse(fmt , this->expiresStr, this->expireDate, UTC));
       // determine freshness lifetime from Expires - Date, or (Date - Last-Modified)/10
   }
-  response.has("ETag") ? this->Etag = response.get("ETag") : this->Etag = "";
+  this->Etag = ProxyServerCache::getEtag(response);
 
   //LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(response, responseObj);
@@ -146,38 +255,6 @@ CacheResponse::CacheResponse(const CacheResponse& rhs) :responseData(rhs.respons
 
   LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(rhs.responseObj, this->responseObj);
-}
-
-
-CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache):
-  responseData(respData),
-  maxFreshness(maxFresh),
-  expired(exp),
-  isNoCache(noCache)
-{
-  Poco::Timestamp ts;
-  timeAdded = ts;
-  //startExpire(this->maxFreshness); // start the expiration timer
-}
-
-CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache,
-			     std::string Etag):
-  responseData(respData),
-  maxFreshness(maxFresh),
-  expired(exp),
-  isNoCache(noCache),
-  Etag(Etag)
-{
-  Poco::Timestamp ts;
-  timeAdded = ts;
-  //startExpire(this->maxFreshness); // start the expiration timer
-}
-
-CacheResponse::CacheResponse(std::string respData, double maxFresh, bool exp, bool noCache, std::string Etag, std::string last_modified):responseData(respData),maxFreshness(maxFresh),expired(exp), isNoCache(noCache),Etag(Etag),last_modified(last_modified)
-{
-  Poco::Timestamp ts;
-  timeAdded = ts;
-  //startExpire(this->maxFreshness); // start the expiration timer
 }
 
 CacheResponse::~CacheResponse(){}

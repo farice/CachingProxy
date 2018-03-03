@@ -37,140 +37,7 @@ using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace std;
 
-
-/*
-Expiration time is determined by more than the cache-control header
-- may be easier to just return a struct with all the information the cache needs to
-- consume
-*/
-
-std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getCacheControlHeaders(HTTPResponse& resp){
-  std::string name;
-  std::string value;
-  std::vector<std::pair<std::string,std::string> > headers;
-  NameValueCollection::ConstIterator it = resp.begin();
-  while (it != resp.end()){ // just cache-control part for now
-    name = it->first;
-    if (name == "Cache-Control"){
-      value = it->second;
-      headers.push_back(std::make_pair(name, value));
-    }
-    ++it;
-  }
-  LOG(TRACE) << "Cache-control headers" << endl;
-  for (int i = 0; i < headers.size(); i++){
-    LOG(DEBUG) << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
-  }
-  return headers;
-}
-
-
-// Not cacheable if has directives: no-store, private
-// no-cache: may implement this directive, may not, functionality is met but just
-// forwarding the response to the client in this case
-
-// must-revalidate makes you re-validate a cached response if it is stale
-// no-cache makes you re-validate a cached response everytime
-bool ProxyRequestHandler::isCacheableResp(HTTPResponse& resp){
-  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp);
-  for (int i = 0; i < cacheControlHeaders.size(); i++){
-    if ((cacheControlHeaders[i].second == "no-store") ||
-	(cacheControlHeaders[i].second == "private")){
-      return false;
-    }
-  }
-  return true;
-}
-
-
-bool ProxyRequestHandler::hasNoCacheDirective(HTTPResponse& resp){
-  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp);
-  for (int i = 0; i < cacheControlHeaders.size(); i++){
-    if (cacheControlHeaders[i].second == "no-cache"){
-      return true;
-    }
-  }
-  return false;
-}
-
-// string NO_ETAG indicates no strong validator found
-std::string ProxyRequestHandler::getEtag(HTTPResponse& resp){
-  NameValueCollection::ConstIterator it = resp.begin();
-  while (it != resp.end()){
-    if (it->first == "ETag"){
-      return it->second;
-    }
-    ++it;
-  }
-  return "NO_ETAG";
-}
-
-
-// -1 indicates no max-age directive found
-double ProxyRequestHandler::getMaxAge(HTTPResponse& resp){
-  std::vector<std::pair<std::string,std::string> > cacheControlHeaders = getCacheControlHeaders(resp);
-  for (int i = 0; i < cacheControlHeaders.size(); i++){
-    std::string current = cacheControlHeaders[i].second;
-    if (current.find("max-age=") != string::npos){
-      return atof((current.substr(current.find("=") + 1, string::npos)).c_str());
-    }
-  }
-  return -1;
-}
-
-
-/*
-std::string ProxyRequestHandler::getDate(HTTPResponse& resp){
-  // can get data directly from request with poco library function
-  // maybe just store it as to_string? doesn't really matter
-
-}
-*/
-
-// string NO_EXPIRE indicates no expiration header was found
-std::string ProxyRequestHandler::getExpires(HTTPResponse& resp){
-  NameValueCollection::ConstIterator it = resp.begin();
-  while (it != resp.end()){
-    if (it->first == "Expires"){
-      return it->second;
-    }
-    ++it;
-  }
-  return "NO_EXPIRE";
-}
-
-
-
-std::string ProxyRequestHandler::getLastModified(HTTPResponse& resp){
-  NameValueCollection::ConstIterator it = resp.begin();
-  while (it != resp.end()){
-    if (it->first == "Last-Modified"){
-      return it->second;
-    }
-    ++it;
-  }
-  return "NO_LAST_MODIFY";
-}
-
-
-std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getHeaders(HTTPResponse& resp){
-  std::string name;
-  std::string value;
-  std::vector<std::pair<std::string,std::string> > headers;
-  NameValueCollection::ConstIterator it = resp.begin();
-  while (it != resp.end()){
-    name = it->first;
-    value = it->second;
-    headers.push_back(std::make_pair(name, value));
-    ++it;
-  }
-  for (int i = 0; i < headers.size(); i++){
-    LOG(TRACE) << "Name=" << headers[i].first << ", value=" << headers[i].second << endl;
-  }
-  return headers;
-}
-
-void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServerRequest& req, HTTPServerResponse& resp) {
+void ProxyRequestHandler::remoteReq(Poco::URI& uri, std::string path, HTTPServerRequest& req, HTTPServerResponse& resp) {
   HTTPClientSession session(uri.getHost(), uri.getPort());
   HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
   string key = this->staticCache.makeKey(uri);
@@ -198,20 +65,13 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   if ((req.getMethod() == "GET") && (proxy_resp.getStatus() == 200)){
     // add if 200-OK resp to GET request
 
-if (isCacheableResp(proxy_resp)){
-// filter out 'no-store' and 'private' responses
-LOG(TRACE) << "The response is cachable " << endl;
+    if (ProxyServerCache::isCacheableResp(proxy_resp, req.get("unique_id"))){
+      // filter out 'no-store' and 'private' responses
+      LOG(TRACE) << "The response is cachable " << endl;
 
-// now parse to find the Etag, lastModified, and other header fields
-
-std::string etag = getEtag(proxy_resp);
-
-std::string lastModified = getLastModified(proxy_resp);
-std::string expires = getExpires(proxy_resp);
-double maxAge = getMaxAge(proxy_resp);
-
-this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
-}
+      this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
+      //LOG(INFO) << req.get("unique_id") << ": NOTE ETag: " << etag << std::endl;
+    }
   }
 
   LOG(TRACE) << "Proxy resp: " << proxy_resp.getStatus() << " - " << proxy_resp.getReason()
@@ -233,12 +93,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   /************************************************/
   // Only using HTTP requests (no danger of HTTPS) //
   /************************************************/
-
-  Poco::Timestamp now;
-  string fmt = "%w %b %f %H:%M:%S %Y";
-  string timestamp_str = Poco::DateTimeFormatter::format(now, fmt);
-  LOG(INFO) << req.get("unique_id") << ": \"" << req.getMethod() << " " << req.getHost() << " " << req.getVersion()
-  << "\" from " << req.get("ip_addr") << " @ " << timestamp_str << std::endl;
 
   try
   {
@@ -281,11 +135,6 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       HTMLForm htmlBody(req, req.stream());
 
       htmlBody.write(opost);
-      /*
-      LOG(TRACE) << "POST body=";
-      htmlBody.write(LOG(TRACE));
-      LOG(TRACE) << endl;
-      */
 
       // get response
       HTTPResponse proxy_resp;
@@ -306,6 +155,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     else {
       /* GET or other request method */
 
+      // This is a GET request, so we may be interested in checking the cache
       if (req.getMethod() == "GET"){
 
         // check if the request has been cached
@@ -315,14 +165,15 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
         if (!checkResponse.isNull()){
 
-	  bool validItem = (*checkResponse).isValidResponse();
+          // TODO -
+	        bool validItem = (*checkResponse).isValidResponse();
 
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
             LOG(INFO) << req.get("unique_id") << ": " << "in cache, requires validation" << endl;
-            bool updatedUser = updateCacheItem(uri, path, req, resp, checkResponse);
-            if (updatedUser) {
-              // return because the updateCacheItem call updated the user post-updating the cache
+            bool itemInvalid = updateCacheItem(uri, path, req, resp, checkResponse);
+            if (itemInvalid) {
+              // return because a remote request was required (item was invalid after validation)
               return;
             }
 
@@ -346,11 +197,14 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
         else{
 
           LOG(INFO) << req.get("unique_id") << ": " << "not in cache" << endl;
-          remoteGet(uri, path, req, resp);
+          remoteReq(uri, path, req, resp);
 
         }
       } else {
-          remoteGet(uri, path, req, resp);
+          // Not a GET request, simply attempt to contact the remote server with the user's request
+          // May fail, but we make a strong exception guarantee
+          // and hence we'll either return a valid response to the user or we'll return to the original state unaffected
+          remoteReq(uri, path, req, resp);
       }
 
     }
@@ -369,6 +223,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   LOG(TRACE) << resp.getStatus() << " - " << resp.getReason() << std::endl;
 }
 
+// returns true if the cache item requires a remote request
 bool ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPServerRequest& req, HTTPServerResponse &resp, Poco::SharedPtr<CacheResponse> item) {
 
   HTTPResponse cacheResponseObj;
@@ -398,7 +253,7 @@ bool ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
     }
   }
 
-  remoteGet(uri, path, req, resp);
+  remoteReq(uri, path, req, resp);
   return true;
 
 
