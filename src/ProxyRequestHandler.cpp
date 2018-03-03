@@ -173,6 +173,7 @@ std::vector<std::pair<std::string,std::string> > ProxyRequestHandler::getHeaders
 void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServerRequest& req, HTTPServerResponse& resp) {
   HTTPClientSession session(uri.getHost(), uri.getPort());
   HTTPRequest proxy_req(req.getMethod(), path, HTTPMessage::HTTP_1_1);
+  string key = this->staticCache.makeKey(uri);
 
   // send request normally
   proxy_req.setContentType("text/html");
@@ -308,7 +309,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
-            updateCacheItem(uri, path, checkResponse);
+            updateCacheItem(uri, path, req, resp, checkResponse);
           }
 
           // writes to resp
@@ -366,7 +367,7 @@ void ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
     LOG(DEBUG) << "status code from ping=" << ping_resp.getStatus() << std::endl;
 
     if (ping_resp.getStatus() == 304) {
-      LOG(DEBUG << "potentially stale data remains valid" << std::endl;
+      LOG(DEBUG) << "potentially stale data remains valid" << std::endl;
 
       // TODO - Update max age?
 
