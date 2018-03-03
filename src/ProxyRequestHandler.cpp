@@ -176,7 +176,7 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   string key = this->staticCache.makeKey(uri);
 
   // send request normally
-  LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
+  LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << uri.getHost() << "/" << path << " " << HTTPMessage::HTTP_1_1
   << "\" from " << uri.getHost() << std::endl;
 
   proxy_req.setContentType("text/html");
@@ -359,7 +359,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
     LOG(DEBUG) << "Failed to get response from url=" << req.getURI() << std::endl
     << "method=" << req.getMethod() << std::endl
     << ex.what() << ": " << ex.message() << endl;
-    
+
     resp.setStatus(HTTPResponse::HTTP_BAD_REQUEST);
     LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   }
