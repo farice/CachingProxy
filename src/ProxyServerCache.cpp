@@ -96,7 +96,6 @@ CacheResponse::CacheResponse(const CacheResponse& rhs) :responseData(rhs.respons
 
   LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(rhs.responseObj, this->responseObj);
-  LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
 
   //startExpire(this->maxFreshness); // start the expiration timer
 }
@@ -179,7 +178,6 @@ void CacheResponse::setExpired(bool exp){
 
   void CacheResponse::getResponse(Poco::Net::HTTPResponse& writeToResponse) {
   // copies cookies, headers, etc
-  LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
   ProxyServerCache::copyResponseObj(responseObj, writeToResponse);
 }
 
