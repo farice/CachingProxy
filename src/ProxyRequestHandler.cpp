@@ -206,13 +206,9 @@ LOG(TRACE) << "The response is cachable " << endl;
 
 std::string etag = getEtag(proxy_resp);
 
-LOG(TRACE) << "1" << endl;
 std::string lastModified = getLastModified(proxy_resp);
-LOG(TRACE) << "2" << endl;
 std::string expires = getExpires(proxy_resp);
-LOG(TRACE) << "3" << endl;
 double maxAge = getMaxAge(proxy_resp);
-LOG(TRACE) << "4" << endl;
     // determine expiration
 
     // testing basic function for now
@@ -229,7 +225,6 @@ this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
 
   LOG(INFO) << req.get("unique_id") << ": " << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   std::ostream& out = resp.send();
-  LOG(INFO) << "Able to send...";
   // Copy HTTP stream to app server response stream
   out << oss.str(); //trying the below
   //Poco::StreamCoper::copyStream(is, out);
@@ -327,9 +322,9 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
             LOG(INFO) << req.get("unique_id") << ": " << "in cache, requires validation" << endl;
-            bool shouldUpdate = updateCacheItem(uri, path, req, resp, checkResponse);
-            if (shouldUpdate) {
-              // return because the updateCacheItem call will update the user post-revalidation
+            bool updatedUser = updateCacheItem(uri, path, req, resp, checkResponse);
+            if (updatedUser) {
+              // return because the updateCacheItem call updated the user post-updating the cache
               return;
             }
 
