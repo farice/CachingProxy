@@ -96,6 +96,9 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
       this->maxFreshness = atof((cacheControl.substr(cacheControl.find("=") + 1, string::npos)).c_str());
       LOG(TRACE) << "freshness from max-age = " << this->maxFreshness << endl;
     }
+    if (cacheControl.find("no-cache") != string::npos){
+      this->isNoCache = true;
+    }
   }
   
   else{
@@ -121,7 +124,11 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
 
 bool CacheResponse::isValidResponse(){
   Poco::Timestamp::TimeDiff timeInCache = this->timeAdded.elapsed();
-  // timeDiff gives you stuff inmicroseconds 
+  // timeDiff gives you stuff inmicroseconds
+  if (this->isNoCache){
+    return false;
+  }
+  
   if ((1000 * timeInCache) >= this->maxFreshness){
     LOG(TRACE) << "Item has expired, maxFreshness was: " << this->maxFreshness << ". Time in cache has been: " << (timeInCache/1000) << endl;
     
