@@ -71,6 +71,7 @@ private:
 
 public:
 
+  Poco::Net::HTTPResponse getResponse();
   static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp);
   static void copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPServerResponse &toResp);
 

@@ -28,6 +28,10 @@ std::string ProxyServerCache::makeKey(Poco::URI& uri){
   return key;
 }
 
+Poco::Net::HTTPResponse getResponse() {
+  return responseObj;
+}
+
 void ProxyServerCache::copyResponseObj(Poco::Net::HTTPResponse &fromResp, Poco::Net::HTTPResponse &toResp) {
   // Copy over headers
   Poco::Net::NameValueCollection::ConstIterator i = fromResp.begin();
