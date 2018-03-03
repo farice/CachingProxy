@@ -200,12 +200,13 @@ LOG(TRACE) << "The response is cachable " << endl;
 
 std::string etag = getEtag(proxy_resp);
 
+LOG(TRACE) << "1" << endl;
 std::string lastModified = getLastModified(proxy_resp);
-
+LOG(TRACE) << "2" << endl;
 std::string expires = getExpires(proxy_resp);
-
+LOG(TRACE) << "3" << endl;
 double maxAge = getMaxAge(proxy_resp);
-
+LOG(TRACE) << "4" << endl;
     // determine expiration
 
     // testing basic function for now
