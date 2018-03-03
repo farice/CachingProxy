@@ -176,7 +176,7 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   string key = this->staticCache.makeKey(uri);
 
   // send request normally
-  LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
+  //LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
   << "\" from " << uri.getHost() << std::endl;
 
   proxy_req.setContentType("text/html");
@@ -187,7 +187,7 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   // create istream for session response
   istream &is = session.receiveResponse(proxy_resp);
 
-  LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
+  //LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
   << "\" from " << uri.getHost() << std::endl;
 
   // copies cookies, headers, etc
@@ -227,7 +227,7 @@ this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
   << "port=" << uri.getPort() << endl
   << "path=" << path << endl;
 
-  LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+  //LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   std::ostream& out = resp.send();
 
   // Copy HTTP stream to app server response stream
@@ -244,7 +244,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   Poco::Timestamp now;
   string fmt = "%w %b %f %H:%M:%S %Y";
   string timestamp_str = Poco::DateTimeFormatter::format(now, fmt);
-  LOG(INFO) << req.get("unique_id") << ": \"" << req.getMethod() << " " << req.getHost() << " " << req.getVersion()
+  //LOG(INFO) << req.get("unique_id") << ": \"" << req.getMethod() << " " << req.getHost() << " " << req.getVersion()
   << "\" from " << req.get("ip_addr") << " @ " << timestamp_str << std::endl;
 
   try
@@ -280,7 +280,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       req.getCookies(postCookies);
       proxy_req.setCookies(postCookies);
 
-      LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
+      //LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
       << "\" from " << uri.getHost() << std::endl;
       std::ostream& opost = session.sendRequest(proxy_req);
 
@@ -297,12 +297,12 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       HTTPResponse proxy_resp;
       // create istream for session response
       istream &is = session.receiveResponse(proxy_resp);
-      LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
+      //LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
       << "\" from " << uri.getHost() << std::endl;
       
       ProxyServerCache::copyResponseObj(proxy_resp, resp);
 
-      LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+      //LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
 
       std::ostream& out = resp.send();
       // Copy HTTP stream to app server response stream
@@ -325,26 +325,26 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 	  
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
-            LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, requires validation" << endl;
+            //LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, requires validation" << endl;
             updateCacheItem(uri, path, req, resp, checkResponse);
           } else {
-            LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, valid" << endl;
+            //LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, valid" << endl;
           }
 
           // writes to resp
-          LOG(DEBUG) << "Copying back cached headers" << endl;
+          //LOG(DEBUG) << "Copying back cached headers" << endl;
           (*checkResponse).getResponse(resp);
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
 
-          LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+          //LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
 
-          LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
+          //LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
           return;
         }
         else{
 
-          LOG(INFO) << req.get("unique_id") << ": \"" << "not in cache" << endl;
+          //LOG(INFO) << req.get("unique_id") << ": \"" << "not in cache" << endl;
           remoteGet(uri, path, req, resp);
 
         }
@@ -356,7 +356,7 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
   }
   catch (Poco::Exception &ex){
 
-    LOG(DEBUG) << "Failed to get response from url=" << req.getURI() << std::endl
+    //LOG(DEBUG) << "Failed to get response from url=" << req.getURI() << std::endl
     << "method=" << req.getMethod() << std::endl
     << ex.what() << ": " << ex.message() << endl;
 
@@ -374,7 +374,7 @@ void ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
   string etag = "";
   if(cacheResponseObj.has("Etag")) {
     etag = cacheResponseObj.get("Etag");
-    LOG(DEBUG) << "cached response has etag=" << etag << std::endl;
+    //LOG(DEBUG) << "cached response has etag=" << etag << std::endl;
     HTTPClientSession session(uri.getHost(), uri.getPort());
     HTTPRequest ping_req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
     ping_req.add("If-None-Match", etag);
@@ -385,10 +385,10 @@ void ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
     HTTPResponse ping_resp;
     session.receiveResponse(ping_resp);
 
-    LOG(DEBUG) << "status code from ping=" << ping_resp.getStatus() << std::endl;
+    //LOG(DEBUG) << "status code from ping=" << ping_resp.getStatus() << std::endl;
 
     if (ping_resp.getStatus() == 304) {
-      LOG(DEBUG) << "potentially stale data remains valid" << std::endl;
+      //LOG(DEBUG) << "potentially stale data remains valid" << std::endl;
 
       // TODO - Update max age?
 

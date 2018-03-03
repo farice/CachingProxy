@@ -65,7 +65,7 @@ namespace Poco {
           }
           catch (Poco::Exception& exc) {
             //Handle your network errors.
-            LOG(DEBUG) << "Network error=" << exc.displayText() << "host=" << host << std::endl;
+            //LOG(DEBUG) << "Network error=" << exc.displayText() << "host=" << host << std::endl;
             isOpen = false;
           }
 
@@ -186,7 +186,7 @@ namespace Poco {
                   destThread.join();
                   LOG(TRACE) << "Dest relay thread exited" << std::endl;
 
-                  LOG(INFO) << request.get("unique_id") << ": " << "Tunnel closed" << std::endl;
+                  //LOG(INFO) << request.get("unique_id") << ": " << "Tunnel closed" << std::endl;
                   continue;
                 }
 
@@ -202,7 +202,7 @@ namespace Poco {
             }
             catch (Poco::Exception&)
             {
-              //LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
+              ////LOG(DEBUG) << "EXCEPTION: requestHandling" << std::endl;
 
               if (!response.sent())
               {
@@ -221,17 +221,17 @@ namespace Poco {
         }
         catch (NoMessageException&)
         {
-          LOG(DEBUG) << "EXCEPTION: Parse Data w/ NoMessage" << std::endl;
+          //LOG(DEBUG) << "EXCEPTION: Parse Data w/ NoMessage" << std::endl;
           break;
         }
         catch (MessageException&)
         {
-          LOG(DEBUG) << "EXCEPTION: Parse Data w/ Message" << std::endl;
+          //LOG(DEBUG) << "EXCEPTION: Parse Data w/ Message" << std::endl;
           sendErrorResponse(session, HTTPResponse::HTTP_BAD_REQUEST);
         }
         catch (Poco::Exception&)
         {
-          LOG(DEBUG) << "EXCEPTION: Parse Data" << std::endl;
+          //LOG(DEBUG) << "EXCEPTION: Parse Data" << std::endl;
           if (session.networkException())
           {
             session.networkException()->rethrow();
@@ -275,7 +275,7 @@ namespace Poco {
         }
         catch (Poco::Exception& exc) {
           //Handle your network errors.
-          LOG(DEBUG) << "Network error=" << exc.displayText() << "host=" << host << std::endl;
+          //LOG(DEBUG) << "Network error=" << exc.displayText() << "host=" << host << std::endl;
           isOpen = false;
         }
 
@@ -290,7 +290,7 @@ namespace Poco {
 
     void ProxyServerConnection::sendErrorResponse(HTTPServerSession& session, HTTPResponse::HTTPStatus status)
     {
-      LOG(DEBUG) << "Send error response="
+      //LOG(DEBUG) << "Send error response="
       << status << std::endl;
 
       HTTPServerResponseImpl response(session);
