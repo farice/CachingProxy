@@ -100,8 +100,13 @@ std::map<std::string, std::string> ProxyServerCache::getCacheControlHeaders(cons
     std::stringstream ss(cacheHeaders);
     while (ss.good())
     {
+        while (ss.peek() == ' ') {// skip spaces
+        ss.get();
+        }
+
         std::string substr;
         getline(ss, substr, ',');
+        //std::remove_if(substr.begin(), substr.end(), ::isspace);
 
         std::size_t current = substr.find("=");
         if(current != std::string::npos) {
@@ -156,7 +161,7 @@ std::string ProxyServerCache::getEtag(const Poco::Net::HTTPResponse& resp){
 
 
 // -1 indicates no max-age directive found
-double ProxyServerCache::getMaxAge(const Poco::Net::HTTPResponse& resp){
+long ProxyServerCache::getMaxAge(const Poco::Net::HTTPResponse& resp){
   std::map<std::string,std::string> cacheHeaders = getCacheControlHeaders(resp);
   if (cacheHeaders.find("max-age") != cacheHeaders.end()) {
     std::map<std::string, std::string>::iterator i = cacheHeaders.find("max-age");
@@ -182,76 +187,138 @@ std::string ProxyServerCache::getLastModified(const Poco::Net::HTTPResponse& res
   return "";
 }
 
-CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::string respData):
+CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::string respData, std::string unique_id):
   responseData(respData)
 {
-  Poco::Timestamp ts;
-  timeAdded = ts;
-  this->responseDate = DateTime(response.getDate());
-
-  //  LOG(TRACE) << "Date cached response was received: " <<
-  // now parse to find the Etag, lastModified, and other header fields
-  std::string lastModified = ProxyServerCache::getLastModified(response);
-  std::string expires = ProxyServerCache::getExpires(response);
-  double maxAge = ProxyServerCache::getMaxAge(response);
+  this->responseTimestamp = response.getDate();
+  this->isNoCache = false;
+  this->mustRevalidate = false;
+  this->maxFreshness = Poco::Timespan(-1, -1);
 
   if (response.has("Cache-Control")){ // assign cache control values
-    string cacheControl = response.get("Cache-Control");
-    LOG(TRACE) << "Cache-Control from the HTTPResponse dictionary" << cacheControl << endl;
-
+    std::map<std::string,std::string> cacheHeaders = ProxyServerCache::getCacheControlHeaders(response);
     // no need to check here for no-store or private, already filtered
 
-    if (cacheControl.find("max-age=") != string::npos){
-      this->maxFreshness = atof((cacheControl.substr(cacheControl.find("=") + 1, string::npos)).c_str());
-      LOG(TRACE) << "freshness from max-age = " << this->maxFreshness << endl;
-    }
-    if (cacheControl.find("no-cache") != string::npos){
-      this->isNoCache = true;
-    }
-  }
+      // (second, ms)
+      long maxAge = ProxyServerCache::getMaxAge(response);
+      this->maxFreshness = Poco::Timespan(maxAge, 0);
+      this->isNoCache = (cacheHeaders.find("no-cache") != cacheHeaders.end());
+      this->mustRevalidate = (cacheHeaders.find("must-revalidate") != cacheHeaders.end());
 
-  else{
+      if (isNoCache) {
+        LOG(INFO) << unique_id << ": "<< "NOTE Cache-Control: no-cache" << std::endl;
+      }
+      if (mustRevalidate) {
+        LOG(INFO) << unique_id << ": "<< "NOTE Cache-Control: must-revalidate" << std::endl;
+      }
+  }
+  else if (this->maxFreshness.seconds() == -1){
+    // determine freshness lifetime from Expires - Date, or (Date - Last-Modified)/10
 
     response.has("Expires") ? this->expiresStr = response.get("Expires") : this->expiresStr = "";
-    response.has("Last-Modified") ? this->last_modified = response.get("Last-Modified") :
-      this->last_modified = "";
+    response.has("Last-Modified") ? this->last_modified = response.get("Last-Modified") : this->last_modified = "";
 
-    string fmt = "%w, %e %b %Y %H:%M:%S GMT";
+    string fmt = "%w, %d %b %Y %H:%M:%S GMT";
+    int tzDiff = 0;
 
-    int UTC = 0;
+    if(this->expiresStr != "") {
+      Poco::DateTime expDT;
 
-    if (DateTimeParser::tryParse(fmt , this->expiresStr, this->expireDate, UTC));
-      // determine freshness lifetime from Expires - Date, or (Date - Last-Modified)/10
+      // no-throw guarantee
+      if (DateTimeParser::tryParse(fmt, this->expiresStr, expDT, tzDiff)){
+        Poco::Timestamp expTS = Poco::Timestamp::fromUtcTime(expDT.utcTime());
+        this->maxFreshness = expTS - response.getDate();
+        LOG(DEBUG) << "freshness from max-age.seconds (exp)="
+        << this->maxFreshness.totalSeconds() << endl;
+      } else {
+      LOG(DEBUG) << "failed to parse date" << std::endl;
+        }
+
+
+    } else if (this->last_modified != "") {
+      Poco::DateTime modDT;
+
+      // no-throw guarantee
+      if (DateTimeParser::tryParse(fmt, this->expiresStr,modDT, tzDiff)){
+        Poco::Timestamp modTS = Poco::Timestamp::fromUtcTime(modDT.utcTime());
+        this->maxFreshness = (response.getDate() - modTS) / 10;
+        LOG(DEBUG) << "freshness from max-age.seconds (m-f)="
+        << this->maxFreshness.totalSeconds() << endl;
+
+      } else {
+      LOG(DEBUG) << "failed to parse date" << std::endl;
+        }
+    }
+
   }
-  this->Etag = ProxyServerCache::getEtag(response);
+  if(this->mustRevalidate) {
+    LOG(INFO) << unique_id << ": "<< "cached, but requires re-validation when stale" << std::endl;
+  }
+  else if (this->maxFreshness.seconds() == -1 || this->isNoCache) {
+    LOG(INFO) << unique_id << ": "<< "cached, but requires re-validation" << std::endl;
+  }
+  else if (this->maxFreshness.seconds() != -1) {
+    this->expireTimestamp = this->responseTimestamp + this->maxFreshness;
 
-  //LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
+    Poco::DateTime expirationDateTime(this->expireTimestamp.utcTime(),0);
+
+    LOG(INFO) << unique_id << ": "<< "cached, expires at "
+    << expirationDateTime.month() << "-" << expirationDateTime.day() << "-" << expirationDateTime.year() << " "
+    << expirationDateTime.hour() << ":"<< expirationDateTime.minute() << ":" << expirationDateTime.second()
+    << " GMT" << std::endl;
+  }
+
+
+
+  // Compute expiration timestamp
+
+  response.has("ETag") ? this->Etag = response.get("ETag") : this->Etag = "";
+
   ProxyServerCache::copyResponseObj(response, responseObj);
-  //LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
 }
 
 
-bool CacheResponse::isValidResponse(){
-  Poco::Timestamp::TimeDiff timeInCache = this->timeAdded.elapsed();
-  // timeDiff gives you stuff inmicroseconds
+bool CacheResponse::isValidResponse(std::string unique_id){
+  // current timestamp
+  Poco::Timestamp now;
+
   if (this->isNoCache){
+    // no cache directive, must validate
+    LOG(INFO) << unique_id << ": " << "in cache, requires validation" << endl;
     return false;
   }
 
-  if ((1000 * timeInCache) >= this->maxFreshness){
-    LOG(TRACE) << "Item has expired, maxFreshness was: " << this->maxFreshness << ". Time in cache has been: " << (timeInCache/1000) << endl;
+  if(this->maxFreshness.seconds() != -1) {
+    // current time preceeds expiration time
+    bool fresh = now < this->expireTimestamp;
+    if (fresh) {
+      LOG(INFO) << unique_id << ": " << "in cache, valid" << endl;
+      return true;
+    } else {
+      Poco::DateTime expirationDateTime(this->expireTimestamp.utcTime(),0);
+      LOG(INFO) << unique_id << ": "<< "in cache, but expired at "
+      << expirationDateTime.month() << "-" << expirationDateTime.day() << "-" << expirationDateTime.year() << " "
+      << expirationDateTime.hour() << ":"<< expirationDateTime.minute() << ":" << expirationDateTime.second()
+      << " GMT" << std::endl;
+      return false;
+    }
 
-    return false;
   }
-  LOG(TRACE) << "Item is still fresh " << endl;
-  return true;
+
+  // this means the destination server response violated the RFC and didn't include a max-age, Expires, or Last-Modified
+  LOG(INFO) << unique_id << ": " << "in cache, requires validation" << endl;
+  return false;
 }
 
 
-CacheResponse::CacheResponse(const CacheResponse& rhs) :responseData(rhs.responseData.str())
+CacheResponse::CacheResponse(const CacheResponse& rhs) :responseData(rhs.responseData.str()),
+isNoCache(rhs.isNoCache), mustRevalidate(rhs.mustRevalidate), expiresStr(rhs.expiresStr),
+Etag(rhs.Etag), last_modified(rhs.last_modified)
 {
 
-  timeAdded = rhs.timeAdded;
+  expireTimestamp = rhs.expireTimestamp;
+  responseTimestamp = rhs.responseTimestamp;
+  maxFreshness = rhs.maxFreshness;
 
   LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(rhs.responseObj, this->responseObj);
@@ -302,7 +369,7 @@ void CacheResponse::setMaxFreshness(double newFreshness){
 }
 
 
-double CacheResponse::getMaxFreshness(){
+Poco::Timespan CacheResponse::getMaxFreshness(){
   return this->maxFreshness;
 }
 
