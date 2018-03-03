@@ -176,6 +176,9 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   string key = this->staticCache.makeKey(uri);
 
   // send request normally
+  LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
+  << "\" from " << uri.getHost() << std::endl;
+
   proxy_req.setContentType("text/html");
   session.sendRequest(proxy_req);
 
@@ -183,6 +186,9 @@ void ProxyRequestHandler::remoteGet(Poco::URI& uri, std::string path, HTTPServer
   HTTPResponse proxy_resp;
   // create istream for session response
   istream &is = session.receiveResponse(proxy_resp);
+
+  LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
+  << "\" from " << uri.getHost() << std::endl;
 
   // copies cookies, headers, etc
   ProxyServerCache::copyResponseObj(proxy_resp, resp);
@@ -221,6 +227,7 @@ this->staticCache.add(key, CacheResponse(proxy_resp, oss.str()));
   << "port=" << uri.getPort() << endl
   << "path=" << path << endl;
 
+  LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
   std::ostream& out = resp.send();
 
   // Copy HTTP stream to app server response stream
@@ -272,6 +279,8 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       req.getCookies(postCookies);
       proxy_req.setCookies(postCookies);
 
+      LOG(INFO) << req.get("unique_id") << ": " << "Requesting \"" << proxy_req.getMethod() << " " << proxy_req.getHost() << " " << proxy_req.getVersion()
+      << "\" from " << uri.getHost() << std::endl;
       std::ostream& opost = session.sendRequest(proxy_req);
 
       HTMLForm htmlBody(req, req.stream());
@@ -287,8 +296,12 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
       HTTPResponse proxy_resp;
       // create istream for session response
       istream &is = session.receiveResponse(proxy_resp);
-
+      LOG(INFO) << req.get("unique_id") << ": " << "Received \"" << proxy_resp.getVersion() << proxy_resp.getStatus() << " " << proxy_resp.getReason()
+      << "\" from " << uri.getHost() << std::endl;
+      
       ProxyServerCache::copyResponseObj(proxy_resp, resp);
+
+      LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
 
       std::ostream& out = resp.send();
       // Copy HTTP stream to app server response stream
@@ -310,7 +323,10 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
 
           if (!validItem) {
             // TODO: - update cacheitem depending on result of If-None-Match request
+            LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, requires validation" << endl;
             updateCacheItem(uri, path, req, resp, checkResponse);
+          } else {
+            LOG(INFO) << req.get("unique_id") << ": \"" << "in cache, valid" << endl;
           }
 
           // writes to resp
@@ -319,12 +335,14 @@ void ProxyRequestHandler::handleRequest(HTTPServerRequest &req, HTTPServerRespon
           std::ostream& out = resp.send();
           out << (*checkResponse).getResponseData().str();
 
+          LOG(INFO) << "Responding \"" << resp.getVersion() << " " << resp.getStatus() << " " << resp.getReason() << "\"" << endl;
+
           LOG(DEBUG) << "Response is cached, responding with cached data" << endl;
           return;
         }
         else{
 
-          LOG(DEBUG) << "The request is not in the cache" << endl;
+          LOG(INFO) << req.get("unique_id") << ": \"" << "not in cache" << endl;
           remoteGet(uri, path, req, resp);
 
         }
