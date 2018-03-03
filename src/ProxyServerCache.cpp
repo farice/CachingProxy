@@ -1,7 +1,6 @@
-
 #include "ProxyServerCache.h"
 
-using namespace Poco;
+using namespace Poco;;
 using namespace std;
 
 // constructor
@@ -109,6 +108,19 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
 
   //startExpire(this->maxFreshness); // start the expiration timer
 }
+
+
+bool CacheResponse::isValidResponse(){
+  Poco::Timestamp::TimeDiff timeInCache = this->timeAdded.elapsed();
+  // timeDiff gives you stuff inmicroseconds 
+  if ((1000 * timeInCache) >= this->maxFreshness){
+    LOG(TRACE) << "Item has expired, maxFreshness was: " << this->maxFreshness << ". Time in cache has been: " << (1000*timeInCache) << endl;
+    
+    return false;
+  }
+  return true;
+}
+
 
 CacheResponse::CacheResponse(const CacheResponse& rhs) :responseData(rhs.responseData.str())
 {
