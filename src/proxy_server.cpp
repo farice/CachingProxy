@@ -1,4 +1,5 @@
 #include "logging/aixlog.hpp"
+
 #include "ProxyServerConnection.h"
 
 #include <iostream>
@@ -68,6 +69,10 @@ class ProxyServerApp : public ServerApplication
 protected:
   int main(const vector<string> &)
   {
+    // Initialize logging
+    auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::info, AixLog::Type::normal);
+    auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::info, AixLog::Type::all, "/var/log/erss/proxy.log");
+    AixLog::Log::init({sink_cout, sink_file});
     //HTTPServer s(new ProxyRequestHandlerFactory, ServerSocket(12345), new HTTPServerParams);
 
 		// minCapacity, maxCapacity, idle timeOut, initial stack size
@@ -90,12 +95,6 @@ protected:
 
 int main(int argc, char *argv[])
 {
-
-  // Initialize logging
-  auto sink_cout = make_shared<AixLog::SinkCout>(AixLog::Severity::info, AixLog::Type::normal);
-  auto sink_file = make_shared<AixLog::SinkFile>(AixLog::Severity::info, AixLog::Type::all, "/var/log/erss/proxy.log");
-  AixLog::Log::init({sink_cout, sink_file});
-
   // run proxy app (Poco ServerApplication)
   ProxyServerApp app;
   return app.run(argc, argv);

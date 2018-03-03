@@ -7,7 +7,7 @@ using Poco::DateTimeFormat;
 
 // constructor
 ProxyServerCache::ProxyServerCache(){
-  LOG(DEBUG) << "Yo, the cache is created with size = " << 1024 << std::endl;
+  //LOG(DEBUG) << "Yo, the cache is created with size = " << 1024 << std::endl;
 }
 
 // constructor (overloaded)
@@ -19,7 +19,7 @@ ProxyServerCache::ProxyServerCache(size_t new_size):size(new_size){
 
 // destructor
 ProxyServerCache::~ProxyServerCache(){
-  LOG(DEBUG) << "Yo, the cache has been destroyed... " << std::endl;
+  //LOG(DEBUG) << "Yo, the cache has been destroyed... " << std::endl;
 }
 
 std::string ProxyServerCache::makeKey(Poco::URI& uri){
@@ -84,7 +84,7 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
   timeAdded = ts;
   this->responseDate = DateTime(response.getDate());
 
-  //  LOG(TRACE) << "Date cached response was received: " << 
+  //  LOG(TRACE) << "Date cached response was received: " <<
 
   if (response.has("Cache-Control")){ // assign cache control values
     string cacheControl = response.get("Cache-Control");
@@ -100,22 +100,22 @@ CacheResponse::CacheResponse(const Poco::Net::HTTPResponse& response, std::strin
       this->isNoCache = true;
     }
   }
-  
+
   else{
-   
+
     response.has("Expires") ? this->expiresStr = response.get("Expires") : this->expiresStr = "";
     response.has("Last-Modified") ? this->last_modified = response.get("Last-Modified") :
       this->last_modified = "";
-    
-    string fmt = "%w, %e %b %Y %H:%M:%S GMT"; 
+
+    string fmt = "%w, %e %b %Y %H:%M:%S GMT";
 
     int UTC = 0;
-    
+
     if (DateTimeParser::tryParse(fmt , this->expiresStr, this->expireDate, UTC));
       // determine freshness lifetime from Expires - Date, or (Date - Last-Modified)/10
   }
   response.has("ETag") ? this->Etag = response.get("ETag") : this->Etag = "";
-  
+
   //LOG(DEBUG) << "Copying over headers to cache..." << std::endl;
   ProxyServerCache::copyResponseObj(response, responseObj);
   //LOG(ERROR) << responseObj.get("Cache-Control") << std::endl;
@@ -128,10 +128,10 @@ bool CacheResponse::isValidResponse(){
   if (this->isNoCache){
     return false;
   }
-  
+
   if ((1000 * timeInCache) >= this->maxFreshness){
     LOG(TRACE) << "Item has expired, maxFreshness was: " << this->maxFreshness << ". Time in cache has been: " << (timeInCache/1000) << endl;
-    
+
     return false;
   }
   LOG(TRACE) << "Item is still fresh " << endl;

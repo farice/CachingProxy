@@ -391,7 +391,7 @@ bool ProxyRequestHandler::updateCacheItem(Poco::URI uri, std::string path, HTTPS
 
     if (ping_resp.getStatus() == 304) {
       LOG(DEBUG) << "potentially stale data remains valid" << std::endl;
-
+      LOG(INFO) << req.get("unique_id") << ": " << "in cache, valid" << endl;
       // TODO - Update max age?
 
       return false;

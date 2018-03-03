@@ -6,9 +6,7 @@ services:
     command: bash -c "ls -a && make all && ./proxy_server"
     volumes:
       - "./src:/src"
-      - type: bind
-        source: ./logs
-        target: /var/logs/erss
+      - "./logs:/var/log/erss"
     ports:
       - "12345:12345"
     tty: true
