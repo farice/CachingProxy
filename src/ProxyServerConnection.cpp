@@ -194,8 +194,6 @@ namespace Poco {
                   }
                   response.send(); */
 
-                  destinationServer.setBlocking(false);
-                  session.socket().setBlocking(false);
                   LOG(TRACE) << "Handling request as HTTPS data. host=" << host << std::endl;
 
                   Poco::Thread destThread;
